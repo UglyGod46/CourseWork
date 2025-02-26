@@ -1,0 +1,100 @@
+﻿<Window x:Class="WpfApp1.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Моя работа" Height="450" Width="800" Background="#FFF0F4F8">
+    <DockPanel>
+        <Menu DockPanel.Dock="Top" Background="#FF007ACC" Foreground="White">
+            <MenuItem Header="Файл">
+                <MenuItem Header="Создать" Click="CreateFile_Click" Foreground="Black"/>
+                <MenuItem Header="Открыть" Click="OpenFile_Click" Foreground="Black"/>
+                <MenuItem Header="Сохранить" Click="SaveFile_Click" Foreground="Black"/>
+                <MenuItem Header="Сохранить как" Click="SaveAs_Click" Foreground="Black"/>
+                <Separator />
+                <MenuItem Header="Выход" Click="Exit_Click" Foreground="Black"/>
+            </MenuItem>
+            <MenuItem Header="Правка">
+                <MenuItem Header="Отменить" Click="Undo_Click" Foreground="Black"/>
+                <MenuItem Header="Повторить" Click="Redo_Click" Foreground="Black"/>
+                <Separator />
+                <MenuItem Header="Вырезать" Click="Cut_Click" Foreground="Black"/>
+                <MenuItem Header="Копировать" Click="Copy_Click" Foreground="Black"/>
+                <MenuItem Header="Вставить" Click="Paste_Click" Foreground="Black"/>
+                <MenuItem Header="Удалить" Click="Delete_Click" Foreground="Black"/>
+                <MenuItem Header="Выделить все" Click="SelectAll_Click" Foreground="Black"/>
+            </MenuItem>
+            <MenuItem Header="Текст">
+                <MenuItem Header="Постановка задачи" Foreground="Black"/>
+                <MenuItem Header="Грамматика" Foreground="Black"/>
+                <MenuItem Header="Классификация грамматики" Foreground="Black"/>
+                <MenuItem Header="Метод анализа" Foreground="Black"/>
+                <MenuItem Header="Диагностика и нейтрализация ошибок" Foreground="Black"/>
+                <MenuItem Header="Тестовый пример" Foreground="Black"/>
+                <MenuItem Header="Список литературы" Foreground="Black"/>
+                <MenuItem Header="Исходный код программы" Foreground="Black"/>
+            </MenuItem>
+            <MenuItem Header="Пуск">
+                <MenuItem Header="Запуск синтаксического анализатора" Foreground="Black"/>
+            </MenuItem>
+            <MenuItem Header="Справка">
+                <MenuItem Header="Вызов справки" Click="Help_Click" Foreground="Black"/>
+                <MenuItem Header="О программе" Click="About_Click" Foreground="Black"/>
+            </MenuItem>
+        </Menu>
+
+        <ToolBar DockPanel.Dock="Top" Height="40" Background="LightGray">
+            <Button ToolTip="Создать" Click="CreateFile_Click">
+                <Image Source="images/create.png" Width="20" Height="20" />
+            </Button>
+            <Button ToolTip="Открыть" Click="OpenFile_Click">
+                <Image Source="images/open.png" Width="20" Height="20" />
+            </Button>
+            <Button ToolTip="Сохранить" Click="SaveFile_Click">
+                <Image Source="images/save.png" Width="20" Height="20" />
+            </Button>
+            <Separator />
+            <Button ToolTip="Отмена" Click="Undo_Click">
+                <Image Source="images/undo.png" Width="20" Height="20" />
+            </Button>
+            <Button ToolTip="Повтор" Click="Redo_Click">
+                <Image Source="images/redo.png" Width="20" Height="20" />
+            </Button>
+            <Separator />
+            <Button ToolTip="Копировать" Click="Copy_Click">
+                <Image Source="images/copyfile.png" Width="20" Height="20" />
+            </Button>
+            <Button ToolTip="Вырезать" Click="Cut_Click">
+                <Image Source="images/cut.png" Width="20" Height="20" />
+            </Button>
+            <Button ToolTip="Вставить" Click="Paste_Click">
+                <Image Source="images/paste.png" Width="16" Height="16" />
+            </Button>
+            <Separator />
+            <Button ToolTip="Запуск синтаксического анализатора">
+                <Image Source="images/start.png" Width="16" Height="16" />
+            </Button>
+            <Button ToolTip="Справка" Click="Help_Click">
+                <Image Source="images/help.png" Width="16" Height="16" />
+            </Button>
+            <Button ToolTip="О программе" Click="About_Click">
+                <Image Source="images/about.png" Width="16" Height="16" />
+            </Button>
+            <TextBlock x:Name="FileNameTextBlock" FontWeight="Normal" FontSize="14" Width="Auto" Background="LightGray" VerticalAlignment="Center"/>
+
+        </ToolBar>
+
+        <Grid Margin="5">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*"/>
+                <!-- Для RichTextBox ввода -->
+                <RowDefinition Height="*"/>
+                <!-- Для RichTextBox вывода -->
+            </Grid.RowDefinitions>
+            <RichTextBox x:Name="InputRichTextBox" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" 
+                         Margin="0,0,0,5" Grid.Row="0" />
+            <RichTextBox x:Name="OutputRichTextBox" IsReadOnly="True" VerticalScrollBarVisibility="Auto" 
+                         Grid.Row="1" />
+        </Grid>
+        
+    </DockPanel>
+    
+</Window>
