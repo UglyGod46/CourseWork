@@ -7,7 +7,7 @@ namespace WpfApp1
     {
         public void ShowHelp()
         {
-            // Создаем новое окно для отображения справки
+
             Window helpWindow = new Window
             {
                 Title = "Справка",
@@ -16,7 +16,7 @@ namespace WpfApp1
                 WindowStartupLocation = WindowStartupLocation.CenterScreen
             };
 
-            // Создаем текстовое поле для отображения инструкций
+
             TextBlock instructionText = new TextBlock
             {
                 Text = "Инструкция по работе с программой:\n\n" +
@@ -28,14 +28,14 @@ namespace WpfApp1
                         "6. Для получения справки нажмите 'Справка' в меню."
             };
 
-            // Добавляем текст в окно помощи
+
             helpWindow.Content = instructionText;
-            helpWindow.ShowDialog(); // Показываем окно
+            helpWindow.ShowDialog(); 
         }
 
         public void ShowAbout()
         {
-            // Создаем новое окно для отображения информации о программе
+           
             Window aboutWindow = new Window
             {
                 Title = "О программе",
@@ -44,7 +44,7 @@ namespace WpfApp1
                 WindowStartupLocation = WindowStartupLocation.CenterScreen
             };
 
-            // Создаем текстовое поле для отображения информации
+           
             TextBlock aboutText = new TextBlock
             {
                 Text = "Текстовый редактор версии 1.0\n\n" +
@@ -53,9 +53,9 @@ namespace WpfApp1
                 TextAlignment = TextAlignment.Center
             };
 
-            // Добавляем текст в окно "О программе"
+          
             aboutWindow.Content = aboutText;
-            aboutWindow.ShowDialog(); // Показываем окно
+            aboutWindow.ShowDialog(); 
         }
     }
 }
