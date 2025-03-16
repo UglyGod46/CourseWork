@@ -20,7 +20,7 @@ namespace WpfApp1
         private readonly EditManager editManager;
         private readonly HelpManager helpManager;
 
-        private double _fontSize = 14; // Поле для хранения значения
+        private double _fontSize = 14; 
 
         public double FontSize
         {
@@ -30,8 +30,8 @@ namespace WpfApp1
                 if (_fontSize != value)
                 {
                     _fontSize = value;
-                    InputTextEditor.FontSize = value; // Обновляем размер шрифта вручную
-                    OutputRichTextBox.FontSize = value; // Обновляем размер шрифта для RichTextBox
+                    InputTextEditor.FontSize = value;
+                    OutputRichTextBox.FontSize = value; 
                 }
             }
         }
@@ -39,9 +39,8 @@ namespace WpfApp1
         public MainWindow()
         {
             InitializeComponent();
-            DataContext = this; // Устанавливаем DataContext
+            DataContext = this;
 
-            // Настройка подсветки синтаксиса
             InputTextEditor.SyntaxHighlighting = HighlightingManager.Instance.GetDefinition("C#");
 
             fileManager = new FileManager(InputTextEditor, FileNameTextBlock);

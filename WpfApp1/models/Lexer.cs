@@ -23,7 +23,7 @@ public class Lexer
 
             if (char.IsWhiteSpace(currentChar))
             {
-                MatchSeparator(); // Пропускаем пробелы
+                MatchSeparator(); 
                 continue;
             }
 
@@ -31,7 +31,6 @@ public class Lexer
             {
                 Token token = ParseIdentifierOrKeyword();
 
-                // Проверяем, является ли первая лексема ключевым словом "function"
                 if (tokens.Count == 0 && (token.Type != TokenType.Keyword || token.Value != "function"))
                 {
                     tokens.Add(new Token
@@ -41,18 +40,16 @@ public class Lexer
                         StartIndex = token.StartIndex,
                         EndIndex = token.EndIndex
                     });
-                    return tokens; // Завершаем анализ
+                    return tokens;
                 }
 
                 tokens.Add(token);
 
-                // Если это ключевое слово "function", проверяем, что следующая лексема — идентификатор
                 if (token.Type == TokenType.Keyword && token.Value == "function")
                 {
-                    // Пропускаем пробелы после "function"
+
                     MatchSeparator();
 
-                    // Проверяем, что следующая лексема — идентификатор
                     if (_position >= _input.Length || !char.IsLetter(_input[_position]))
                     {
                         tokens.Add(new Token
@@ -62,10 +59,9 @@ public class Lexer
                             StartIndex = _position,
                             EndIndex = _position
                         });
-                        return tokens; // Завершаем анализ
+                        return tokens;
                     }
 
-                    // Добавляем идентификатор (название функции)
                     Token identifierToken = ParseIdentifierOrKeyword();
                     tokens.Add(identifierToken);
                 }
@@ -82,7 +78,7 @@ public class Lexer
             {
                 tokens.Add(ParsePunctuation());
             }
-            else if (IsEndOfStatement(currentChar)) // Обработка конца оператора
+            else if (IsEndOfStatement(currentChar)) 
             {
                 tokens.Add(ParseEndOfStatement());
             }
@@ -109,10 +105,9 @@ public class Lexer
 
         var tokenType = IsKeyword(value) ? TokenType.Keyword : TokenType.Identifier;
 
-        // Проверка обязательного разделителя после ключевого слова `function`
         if (tokenType == TokenType.Keyword && (value == "function" || value == "return"))
         {
-            MatchSeparator(); // Пропускаем пробелы после `function` и `return`
+            MatchSeparator();
         }
 
         return new Token
