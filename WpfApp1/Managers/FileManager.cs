@@ -1,4 +1,5 @@
-﻿using Microsoft.Win32;
+﻿using ICSharpCode.AvalonEdit;
+using Microsoft.Win32;
 using System;
 using System.IO;
 using System.Windows;
@@ -9,12 +10,12 @@ namespace WpfApp1
 {
     public class FileManager
     {
-        private readonly RichTextBox inputRichTextBox;
+        private readonly TextEditor inputTextEditor;
         private readonly TextBlock fileNameTextBlock;
 
-        public FileManager(RichTextBox inputRichTextBox, TextBlock fileNameTextBlock)
+        public FileManager(TextEditor inputTextEditor, TextBlock fileNameTextBlock)
         {
-            this.inputRichTextBox = inputRichTextBox;
+            this.inputTextEditor = inputTextEditor;
             this.fileNameTextBlock = fileNameTextBlock;
         }
 
@@ -47,9 +48,8 @@ namespace WpfApp1
                 try
                 {
                     string fileContent = File.ReadAllText(currentFilePath);
-                    inputRichTextBox.Document.Blocks.Clear();
-                    inputRichTextBox.AppendText(fileContent);
-                    fileNameTextBlock.Text = $"Открыт файл: {System.IO.Path.GetFileName(currentFilePath)}"; // Обновляем текст
+                    inputTextEditor.Text = fileContent;
+                    fileNameTextBlock.Text = $"Открыт файл: {System.IO.Path.GetFileName(currentFilePath)}";
                 }
                 catch (Exception ex)
                 {
@@ -72,7 +72,7 @@ namespace WpfApp1
                 try
                 {
                     File.WriteAllText(currentFilePath, string.Empty);
-                    inputRichTextBox.Document.Blocks.Clear();
+                    inputTextEditor.Clear();
                     fileNameTextBlock.Text = $"Создан файл: {System.IO.Path.GetFileName(currentFilePath)}"; // Обновляем текст
                 }
                 catch (Exception ex)
@@ -92,8 +92,7 @@ namespace WpfApp1
 
             try
             {
-                string fileContent = new TextRange(inputRichTextBox.Document.ContentStart, inputRichTextBox.Document.ContentEnd).Text;
-                File.WriteAllText(currentFilePath, fileContent);
+                File.WriteAllText(currentFilePath, inputTextEditor.Text);
                 MessageBox.Show("Файл сохранён успешно!", "Успех", MessageBoxButton.OK, MessageBoxImage.Information);
             }
             catch (Exception ex)

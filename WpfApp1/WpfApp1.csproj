@@ -53,8 +53,12 @@
     <ApplicationIcon>images\analytics_117968.ico</ApplicationIcon>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="ICSharpCode.AvalonEdit, Version=6.3.0.90, Culture=neutral, PublicKeyToken=9cc39be672370310, processorArchitecture=MSIL">
+      <HintPath>..\packages\AvalonEdit.6.3.0.90\lib\net462\ICSharpCode.AvalonEdit.dll</HintPath>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Data" />
+    <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Xml" />
     <Reference Include="Microsoft.CSharp" />
     <Reference Include="System.Core" />
@@ -90,6 +94,8 @@
     <Compile Include="Managers\EditManager1.cs" />
     <Compile Include="Managers\FileManager.cs" />
     <Compile Include="Managers\HelpManager.cs" />
+    <Compile Include="models\Lexer.cs" />
+    <Compile Include="models\Token.cs" />
     <Compile Include="Properties\AssemblyInfo.cs">
       <SubType>Code</SubType>
     </Compile>
@@ -107,6 +113,7 @@
       <Generator>ResXFileCodeGenerator</Generator>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
     </EmbeddedResource>
+    <None Include="packages.config" />
     <None Include="Properties\Settings.settings">
       <Generator>SettingsSingleFileGenerator</Generator>
       <LastGenOutput>Settings.Designer.cs</LastGenOutput>

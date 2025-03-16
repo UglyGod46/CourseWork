@@ -1,11 +1,15 @@
-﻿using Microsoft.Win32;
+﻿using ICSharpCode.AvalonEdit;
+using ICSharpCode.AvalonEdit.Highlighting;
+using Microsoft.Win32;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Media;
+using WpfApp1.models;
 
 namespace WpfApp1
 {
@@ -16,14 +20,35 @@ namespace WpfApp1
         private readonly EditManager editManager;
         private readonly HelpManager helpManager;
 
+        private double _fontSize = 14; // Поле для хранения значения
+
+        public double FontSize
+        {
+            get { return _fontSize; }
+            set
+            {
+                if (_fontSize != value)
+                {
+                    _fontSize = value;
+                    InputTextEditor.FontSize = value; // Обновляем размер шрифта вручную
+                    OutputRichTextBox.FontSize = value; // Обновляем размер шрифта для RichTextBox
+                }
+            }
+        }
+
         public MainWindow()
         {
             InitializeComponent();
-            fileManager = new FileManager(InputRichTextBox, FileNameTextBlock);
-            editManager = new EditManager(InputRichTextBox);
+            DataContext = this; // Устанавливаем DataContext
+
+            // Настройка подсветки синтаксиса
+            InputTextEditor.SyntaxHighlighting = HighlightingManager.Instance.GetDefinition("C#");
+
+            fileManager = new FileManager(InputTextEditor, FileNameTextBlock);
+            editManager = new EditManager(InputTextEditor);
             helpManager = new HelpManager();
-            
         }
+
 
 
         private void SaveAs_Click(object sender, RoutedEventArgs e)
@@ -96,100 +121,59 @@ namespace WpfApp1
             Application.Current.Shutdown();
         }
 
-        private void FontSizeComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
         {
-            
-            if (FontSizeComboBox.SelectedItem is ComboBoxItem selectedItem && double.TryParse(selectedItem.Content.ToString(), out double fontSize))
+            if (!string.IsNullOrWhiteSpace(InputTextEditor.Text))
             {
-                
-                ApplyFontSize(InputRichTextBox, fontSize);
+                var result = MessageBox.Show("Вы хотите сохранить изменения?", "Подтверждение", MessageBoxButton.YesNoCancel, MessageBoxImage.Warning);
 
-                
-                ApplyFontSize(OutputRichTextBox, fontSize);
-            }
-        }
-
-        private void ApplyFontSize(RichTextBox richTextBox, double fontSize)
-        {
-            
-            if (richTextBox == null)
-            {
-                MessageBox.Show("RichTextBox инициализирован.");
-                return;
-            }
-
-        
-            TextSelection selection = richTextBox.Selection;
-
-           
-            if (selection != null)
-            {
-                
-                if (!selection.IsEmpty)
+                if (result == MessageBoxResult.Yes)
                 {
-                    selection.ApplyPropertyValue(TextElement.FontSizeProperty, fontSize);
+                    fileManager.SaveAs(ref currentFilePath);
                 }
-                else
+                else if (result == MessageBoxResult.Cancel)
                 {
-                
-                    richTextBox.FontSize = fontSize;
+                    e.Cancel = true;
                 }
             }
-            else
+        }
+
+        private void AnalyzeButton_Click(object sender, RoutedEventArgs e)
+        {
+            OutputRichTextBox.Document.Blocks.Clear();
+            string input = InputTextEditor.Text;
+
+            Lexer lexer = new Lexer(input);
+            List<Token> tokens = lexer.Tokenize();
+
+            var table = new Table();
+            OutputRichTextBox.Document.Blocks.Add(table);
+
+            table.CellSpacing = 10;
+            table.Background = Brushes.White;
+
+            for (int i = 0; i < 4; i++)
             {
-           
-                richTextBox.FontSize = fontSize;
+                table.Columns.Add(new TableColumn());
             }
-        }
-        private void InputRichTextBox_TextChanged(object sender, TextChangedEventArgs e)
-        {
-          
-            InputRichTextBox.TextChanged -= InputRichTextBox_TextChanged;
-        
-            TextRange textRange = new TextRange(InputRichTextBox.Document.ContentStart, InputRichTextBox.Document.ContentEnd);
-            textRange.ClearAllProperties();
 
-            HighlightKeywords();
+            var headerRow = new TableRow { Background = Brushes.LightGray };
+            headerRow.Cells.Add(new TableCell(new Paragraph(new Run("Условный код"))));
+            headerRow.Cells.Add(new TableCell(new Paragraph(new Run("Тип лексемы"))));
+            headerRow.Cells.Add(new TableCell(new Paragraph(new Run("Лексема"))));
+            headerRow.Cells.Add(new TableCell(new Paragraph(new Run("Местоположение"))));
+            table.RowGroups.Add(new TableRowGroup());
+            table.RowGroups[0].Rows.Add(headerRow);
 
-            InputRichTextBox.TextChanged += InputRichTextBox_TextChanged;
-        }
-
-        private void HighlightKeywords()
-        {
-            string[] keywords = { "function", "if", "else", "while", "for", "return", "var", "let", "const" };
-            foreach (string keyword in keywords)
+            foreach (var token in tokens)
             {
-                HighlightText(keyword, Brushes.Blue, FontWeights.Bold);
-            }
-        }
-
-
-        private void HighlightText(string text, Brush foreground, FontWeight fontWeight)
-        {
-            TextPointer position = InputRichTextBox.Document.ContentStart;
-
-            while (position != null)
-            {
-                if (position.GetPointerContext(LogicalDirection.Forward) == TextPointerContext.Text)
-                {
-                    string textRun = position.GetTextInRun(LogicalDirection.Forward);
-                    int index = textRun.IndexOf(text, StringComparison.OrdinalIgnoreCase);
-
-                    if (index >= 0)
-                    {
-                        TextPointer start = position.GetPositionAtOffset(index);
-                        TextPointer end = start.GetPositionAtOffset(text.Length);
-                        TextRange range = new TextRange(start, end);
-
-                        range.ApplyPropertyValue(TextElement.ForegroundProperty, foreground);
-                        range.ApplyPropertyValue(TextElement.FontWeightProperty, fontWeight);
-                    }
-                }
-
-                position = position.GetNextContextPosition(LogicalDirection.Forward);
+                var row = new TableRow();
+                row.Cells.Add(new TableCell(new Paragraph(new Run(((int)token.Type).ToString()))));
+                row.Cells.Add(new TableCell(new Paragraph(new Run(token.Type.ToString()))));
+                row.Cells.Add(new TableCell(new Paragraph(new Run(token.Value))));
+                row.Cells.Add(new TableCell(new Paragraph(new Run($"с {token.StartIndex + 1} по {token.EndIndex + 1} символ"))));
+                table.RowGroups[0].Rows.Add(row);
             }
         }
     }
 }
-    
-

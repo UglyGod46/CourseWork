@@ -1,75 +1,46 @@
-﻿using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Documents;
+﻿using ICSharpCode.AvalonEdit;
 
-namespace WpfApp1
+public class EditManager
 {
-    public class EditManager
+    private readonly TextEditor inputTextEditor;
+
+    public EditManager(TextEditor inputTextEditor)
     {
-        private readonly RichTextBox inputRichTextBox;
+        this.inputTextEditor = inputTextEditor;
+    }
 
-        public EditManager(RichTextBox inputRichTextBox)
-        {
-            this.inputRichTextBox = inputRichTextBox;
-        }
+    public void Cut()
+    {
+        inputTextEditor.Cut();
+    }
 
-        public void Cut()
-        {
-            if (inputRichTextBox.Selection.IsEmpty)
-                return;
+    public void Copy()
+    {
+        inputTextEditor.Copy();
+    }
 
-            TextRange selectedText = new TextRange(inputRichTextBox.Selection.Start, inputRichTextBox.Selection.End);
-            Clipboard.SetText(selectedText.Text);
-            selectedText.Text = string.Empty; // Удалить выделенный текст
-        }
+    public void Paste()
+    {
+        inputTextEditor.Paste();
+    }
 
-        public void Copy()
-        {
-            if (inputRichTextBox.Selection.IsEmpty)
-                return;
+    public void Delete()
+    {
+        inputTextEditor.SelectedText = string.Empty;
+    }
 
-            TextRange selectedText = new TextRange(inputRichTextBox.Selection.Start, inputRichTextBox.Selection.End);
-            Clipboard.SetText(selectedText.Text);
-        }
+    public void SelectAll()
+    {
+        inputTextEditor.SelectAll();
+    }
 
-        public void Paste()
-        {
-            if (Clipboard.ContainsText())
-            {
-                string clipboardText = Clipboard.GetText();
-                inputRichTextBox.AppendText(clipboardText);
-            }
-        }
+    public void Undo()
+    {
+        inputTextEditor.Undo();
+    }
 
-        public void Delete()
-        {
-            if (inputRichTextBox.Selection.IsEmpty)
-                return;
-
-            TextRange selectedText = new TextRange(inputRichTextBox.Selection.Start, inputRichTextBox.Selection.End);
-            selectedText.Text = string.Empty; // Удалить выделенный текст
-        }
-
-        public void SelectAll()
-        {
-            inputRichTextBox.SelectAll();
-            inputRichTextBox.Focus(); // Установить фокус на RichTextBox
-        }
-
-        public void Undo()
-        {
-            if (inputRichTextBox.CanUndo)
-            {
-                inputRichTextBox.Undo();
-            }
-        }
-
-        public void Redo()
-        {
-            if (inputRichTextBox.CanRedo)
-            {
-                inputRichTextBox.Redo();
-            }
-        }
+    public void Redo()
+    {
+        inputTextEditor.Redo();
     }
 }

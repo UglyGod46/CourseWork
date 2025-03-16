@@ -1,9 +1,12 @@
 ﻿<Window x:Class="WpfApp1.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Моя работа" Height="450" Width="800" Background="#FFF0F4F8">
+        xmlns:avalonEdit="http://icsharpcode.net/sharpdevelop/avalonedit"
+        Title="Моя работа" Height="450" Width="800" Background="#FFF0F4F8"
+        Closing="Window_Closing">
 
     <DockPanel>
+        <!-- Меню -->
         <Menu DockPanel.Dock="Top" Background="#FF007ACC" Foreground="White">
             <MenuItem Header="Файл">
                 <MenuItem Header="Создать" Click="CreateFile_Click" Foreground="Black"/>
@@ -42,6 +45,7 @@
             </MenuItem>
         </Menu>
 
+        <!-- Панель инструментов -->
         <ToolBarTray DockPanel.Dock="Top" Background="LightGray">
             <ToolBar Band="1" BandIndex="1" Height="40">
                 <Button ToolTip="Создать" Click="CreateFile_Click">
@@ -71,7 +75,7 @@
                     <Image Source="images/paste.png" Width="16" Height="16" />
                 </Button>
                 <Separator />
-                <Button ToolTip="Запуск синтаксического анализатора">
+                <Button ToolTip="Запуск синтаксического анализатора" Click="AnalyzeButton_Click">
                     <Image Source="images/start.png" Width="16" Height="16" />
                 </Button>
                 <Button ToolTip="Справка" Click="Help_Click">
@@ -82,35 +86,45 @@
                 </Button>
                 <Separator />
 
-                <ComboBox x:Name="FontSizeComboBox" Width="80" VerticalAlignment="Center" SelectedIndex="0" SelectionChanged="FontSizeComboBox_SelectionChanged">
+                <ComboBox x:Name="FontSizeComboBox" Width="80" VerticalAlignment="Center" SelectedValue="{Binding FontSize}">
                     <ComboBoxItem>12</ComboBoxItem>
                     <ComboBoxItem>14</ComboBoxItem>
                     <ComboBoxItem>16</ComboBoxItem>
                     <ComboBoxItem>18</ComboBoxItem>
                 </ComboBox>
                 <TextBlock x:Name="FileNameTextBlock" FontWeight="Normal" FontSize="14" Width="Auto" Background="LightGray" VerticalAlignment="Center" Margin="10,0,0,0"/>
-
             </ToolBar>
         </ToolBarTray>
 
+        <!-- Основное содержимое -->
         <Grid Margin="5">
             <Grid.RowDefinitions>
                 <RowDefinition Height="*"/>
-
                 <RowDefinition Height="*"/>
-  
             </Grid.RowDefinitions>
-            <RichTextBox x:Name="InputRichTextBox" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" 
-             TextChanged="InputRichTextBox_TextChanged">
-                <RichTextBox.Resources>
-                    <Style TargetType="Paragraph">
-                        
-                        <Setter Property="LineHeight" Value="0.5" />
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
 
-                    </Style>
-                </RichTextBox.Resources>
-            </RichTextBox>
-            <RichTextBox x:Name="OutputRichTextBox" IsReadOnly="True" VerticalScrollBarVisibility="Auto" Grid.Row="1" />
+            <!-- AvalonEdit для ввода -->
+            <avalonEdit:TextEditor 
+                Grid.Row="0" Grid.Column="1" 
+                Name="InputTextEditor" 
+                FontSize="{Binding FontSize}" 
+                ShowLineNumbers="True" 
+                FontFamily="Consolas" 
+                SyntaxHighlighting="C#" 
+                VerticalScrollBarVisibility="Auto" 
+                 />
+
+            <!-- RichTextBox для вывода -->
+            <RichTextBox 
+                x:Name="OutputRichTextBox" 
+                IsReadOnly="True" 
+                FontSize="{Binding FontSize}" 
+                VerticalScrollBarVisibility="Auto" 
+                Grid.Row="1" Grid.Column="1" />
         </Grid>
     </DockPanel>
 </Window>
