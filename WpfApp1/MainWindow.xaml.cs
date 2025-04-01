@@ -142,36 +142,108 @@ namespace WpfApp1
             OutputRichTextBox.Document.Blocks.Clear();
             string input = InputTextEditor.Text;
 
+            // Лексический анализ
             Lexer lexer = new Lexer(input);
             List<Token> tokens = lexer.Tokenize();
 
-            var table = new Table();
-            OutputRichTextBox.Document.Blocks.Add(table);
+            // Синтаксический анализ
+            Parser1 parser = new Parser1(tokens);
+            ParseResult result = parser.Parse();
 
-            table.CellSpacing = 10;
-            table.Background = Brushes.White;
-
-            for (int i = 0; i < 4; i++)
+            // Основной заголовок
+            var headerParagraph = new Paragraph();
+            if (result.IsValid)
             {
-                table.Columns.Add(new TableColumn());
+                headerParagraph.Inlines.Add(new Run("✓ Синтаксический анализ завершен успешно")
+                {
+                    Foreground = Brushes.Green,
+                    FontWeight = FontWeights.Bold,
+                    FontSize = 14
+                });
             }
-
-            var headerRow = new TableRow { Background = Brushes.LightGray };
-            headerRow.Cells.Add(new TableCell(new Paragraph(new Run("Условный код"))));
-            headerRow.Cells.Add(new TableCell(new Paragraph(new Run("Тип лексемы"))));
-            headerRow.Cells.Add(new TableCell(new Paragraph(new Run("Лексема"))));
-            headerRow.Cells.Add(new TableCell(new Paragraph(new Run("Местоположение"))));
-            table.RowGroups.Add(new TableRowGroup());
-            table.RowGroups[0].Rows.Add(headerRow);
-
-            foreach (var token in tokens)
+            else
             {
-                var row = new TableRow();
-                row.Cells.Add(new TableCell(new Paragraph(new Run(((int)token.Type).ToString()))));
-                row.Cells.Add(new TableCell(new Paragraph(new Run(token.Type.ToString()))));
-                row.Cells.Add(new TableCell(new Paragraph(new Run(token.Value))));
-                row.Cells.Add(new TableCell(new Paragraph(new Run($"с {token.StartIndex + 1} по {token.EndIndex + 1} символ"))));
-                table.RowGroups[0].Rows.Add(row);
+                headerParagraph.Inlines.Add(new Run($"× Найдено {result.Errors.Count} синтаксических ошибок")
+                {
+                    Foreground = Brushes.Red,
+                    FontWeight = FontWeights.Bold,
+                    FontSize = 14
+                });
+            }
+            OutputRichTextBox.Document.Blocks.Add(headerParagraph);
+
+            if (!result.IsValid)
+            {
+                // Создаем таблицу для ошибок
+                var errorsTable = new Table
+                {
+                    CellSpacing = 5,
+                    Background = Brushes.White,
+                    Margin = new Thickness(0, 10, 0, 0),
+                    BorderBrush = Brushes.Gray,
+                    BorderThickness = new Thickness(1)
+                };
+
+                // Настраиваем колонки
+                errorsTable.Columns.Add(new TableColumn { Width = new GridLength(70, GridUnitType.Star) });
+                errorsTable.Columns.Add(new TableColumn { Width = new GridLength(30, GridUnitType.Star) });
+
+                // Группа строк для заголовка
+                var headerGroup = new TableRowGroup();
+                var headerRow = new TableRow
+                {
+                    Background = Brushes.LightGray,
+                    FontWeight = FontWeights.Bold
+                };
+
+                headerRow.Cells.Add(new TableCell(new Paragraph(new Run("Описание ошибки"))
+                {
+                    BorderThickness = new Thickness(0, 0, 1, 1),
+                    BorderBrush = Brushes.Gray,
+                    Padding = new Thickness(5)
+                }));
+
+                headerRow.Cells.Add(new TableCell(new Paragraph(new Run("Позиция"))
+                {
+                    BorderThickness = new Thickness(0, 0, 0, 1),
+                    BorderBrush = Brushes.Gray,
+                    Padding = new Thickness(5)
+                }));
+
+                headerGroup.Rows.Add(headerRow);
+                errorsTable.RowGroups.Add(headerGroup);
+
+                // Группа строк для данных
+                var dataGroup = new TableRowGroup();
+
+                foreach (var error in result.Errors)
+                {
+                    var errorParts = error.Split(new[] { '(' }, 2);
+                    var row = new TableRow();
+
+                    // Ячейка с описанием ошибки
+                    var descriptionCell = new TableCell(new Paragraph(new Run(errorParts[0].Trim())))
+                    {
+                        BorderThickness = new Thickness(0, 0, 1, 0),
+                        BorderBrush = Brushes.LightGray,
+                        Padding = new Thickness(5)
+                    };
+                    row.Cells.Add(descriptionCell);
+
+                    // Ячейка с позицией
+                    var positionCell = new TableCell();
+                    if (errorParts.Length > 1)
+                    {
+                        positionCell.Blocks.Add(new Paragraph(new Run(errorParts[1].TrimEnd(')'))));
+                    }
+                    positionCell.Padding = new Thickness(5);
+                    row.Cells.Add(positionCell);
+
+                    dataGroup.Rows.Add(row);
+                }
+
+                errorsTable.RowGroups.Add(dataGroup);
+                OutputRichTextBox.Document.Blocks.Add(errorsTable);
             }
         }
     }

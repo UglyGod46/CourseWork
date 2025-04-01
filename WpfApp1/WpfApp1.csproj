@@ -95,6 +95,8 @@
     <Compile Include="Managers\FileManager.cs" />
     <Compile Include="Managers\HelpManager.cs" />
     <Compile Include="models\Lexer.cs" />
+    <Compile Include="models\Parser.cs" />
+    <Compile Include="models\Parser1.cs" />
     <Compile Include="models\Token.cs" />
     <Compile Include="Properties\AssemblyInfo.cs">
       <SubType>Code</SubType>

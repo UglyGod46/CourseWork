@@ -23,47 +23,38 @@ public class Lexer
 
             if (char.IsWhiteSpace(currentChar))
             {
-                MatchSeparator(); 
+                MatchSeparator();
                 continue;
             }
 
-            if (char.IsLetter(currentChar))
+            if (char.IsLetter(currentChar) || currentChar == '_')
             {
                 Token token = ParseIdentifierOrKeyword();
 
-                if (tokens.Count == 0 && (token.Type != TokenType.Keyword || token.Value != "function"))
+                // Проверяем на наличие кириллицы в идентификаторе или ключевом слове
+                if (ContainsCyrillic(token.Value))
                 {
-                    tokens.Add(new Token
-                    {
-                        Type = TokenType.Error,
-                        Value = "Ошибка: Первое слово должно быть 'function'",
-                        StartIndex = token.StartIndex,
-                        EndIndex = token.EndIndex
-                    });
-                    return tokens;
+                    token.Type = TokenType.Error;
+                    token.Value = token.Value;
                 }
 
                 tokens.Add(token);
 
-                if (token.Type == TokenType.Keyword && token.Value == "function")
+                if ((token.Type == TokenType.Keyword) &&
+                    (token.Value.StartsWith("function") || token.Value.StartsWith("return")))
                 {
-
+                    int separatorStart = _position;
                     MatchSeparator();
-
-                    if (_position >= _input.Length || !char.IsLetter(_input[_position]))
+                    if (separatorStart != _position)
                     {
                         tokens.Add(new Token
                         {
-                            Type = TokenType.Error,
-                            Value = "Ошибка: После 'function' должно быть название функции",
-                            StartIndex = _position,
-                            EndIndex = _position
+                            Type = TokenType.Separator,
+                            Value = " ",
+                            StartIndex = separatorStart,
+                            EndIndex = _position - 1
                         });
-                        return tokens;
                     }
-
-                    Token identifierToken = ParseIdentifierOrKeyword();
-                    tokens.Add(identifierToken);
                 }
             }
             else if (char.IsDigit(currentChar))
@@ -78,9 +69,21 @@ public class Lexer
             {
                 tokens.Add(ParsePunctuation());
             }
-            else if (IsEndOfStatement(currentChar)) 
+            else if (IsEndOfStatement(currentChar))
             {
                 tokens.Add(ParseEndOfStatement());
+            }
+            else if (IsCyrillic(currentChar))
+            {
+                // Обработка отдельных кириллических символов
+                tokens.Add(new Token
+                {
+                    Type = TokenType.Error,
+                    Value = "Ошибка: кириллический символ - " + currentChar,
+                    StartIndex = _position,
+                    EndIndex = _position
+                });
+                _position++;
             }
             else
             {
@@ -98,17 +101,41 @@ public class Lexer
         return tokens;
     }
 
+    private bool ContainsCyrillic(string text)
+    {
+        foreach (char c in text)
+        {
+            if (IsCyrillic(c))
+                return true;
+        }
+        return false;
+    }
+
+    private bool IsCyrillic(char c)
+    {
+        // Диапазоны символов кириллицы в Unicode
+        return (c >= 'А' && c <= 'я') || c == 'ё' || c == 'Ё';
+    }
+
     private Token ParseIdentifierOrKeyword()
     {
         int start = _position;
         string value = ParseWhile(c => char.IsLetterOrDigit(c) || c == '_');
 
-        var tokenType = IsKeyword(value) ? TokenType.Keyword : TokenType.Identifier;
-
-        if (tokenType == TokenType.Keyword && (value == "function" || value == "return"))
+        // Проверяем на наличие кириллицы в идентификаторе или ключевом слове
+        if (ContainsCyrillic(value))
         {
-            MatchSeparator();
+            return new Token
+            {
+                Type = TokenType.Error,
+                Value = value,
+                StartIndex = start,
+                EndIndex = _position - 1
+            };
         }
+
+        // Проверяем, является ли value ключевым словом (только если оно точно совпадает)
+        var tokenType = IsKeyword(value) ? TokenType.Keyword : TokenType.Identifier;
 
         return new Token
         {
@@ -119,6 +146,7 @@ public class Lexer
         };
     }
 
+    // Остальные методы остаются без изменений
     private Token ParseNumber()
     {
         int start = _position;

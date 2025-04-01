@@ -37,7 +37,7 @@
                 <MenuItem Header="Исходный код программы" Foreground="Black"/>
             </MenuItem>
             <MenuItem Header="Пуск">
-                <MenuItem Header="Запуск синтаксического анализатора" Foreground="Black"/>
+                <MenuItem Header="Запуск синтаксического анализатора" Click="AnalyzeButton_Click" Foreground="Black"/>
             </MenuItem>
             <MenuItem Header="Справка">
                 <MenuItem Header="Вызов справки" Click="Help_Click" Foreground="Black"/>

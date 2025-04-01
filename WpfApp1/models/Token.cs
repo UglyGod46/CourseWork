@@ -15,7 +15,8 @@ namespace WpfApp1.models
         Punctuation,     // Разделители ((), {}, ,)
         EndOfStatement,  // Конец оператора (;)
         Invalid,         // Недопустимые символы
-        Error            // Ошибка (например, первое слово не function)
+        Error,            // Ошибка (например, первое слово не function)
+        Separator      
     }
 
     public class Token
