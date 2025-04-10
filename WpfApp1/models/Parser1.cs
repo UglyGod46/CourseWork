@@ -168,11 +168,35 @@ public class Parser
             MoveNext();
             ParseReturnStatement();
 
-            if (!Check1(13, "'}'"))
+            // Проверка на закрывающую скобку '}'
+            if (CurrentToken == null || CurrentToken.Code != 13)
             {
-                // Пропускаем до ';'
-                while (CurrentToken != null && CurrentToken.Code != 14)
-                    MoveNext();
+                // Добавляем ошибку о пропущенной '}'
+                AddError("Ожидалась '}'", CurrentToken);
+
+                // Вместо пропуска добавляем искусственный токен для }
+                Token missingCloseBrace = new Token
+                {
+                    Code = 13,
+                    Lexeme = "}",
+                    Position = CurrentToken != null ? CurrentToken.Position : "end"
+                };
+
+                // Добавляем токен и продолжаем парсинг
+                if (_currentIndex >= _tokens.Count)
+                {
+                    _tokens.Add(missingCloseBrace);
+                }
+                else
+                {
+                    _tokens.Insert(_currentIndex, missingCloseBrace);
+                }
+
+                // Эта проверка теперь сработает с искусственным токеном
+                if (CurrentToken == null || CurrentToken.Code != 13)
+                {
+                    MoveNext(); // Пропускаем искусственный токен
+                }
             }
             else
             {
@@ -187,11 +211,31 @@ public class Parser
                 AddError("Ожидалось '{'", CurrentToken);
                 ParseReturnStatement();
 
-                if (!Check1(13, "'}'"))
+                // Аналогично добавляем искусственную '}'
+                if (CurrentToken == null || CurrentToken.Code != 13)
                 {
-                    // Пропускаем до ';'
-                    while (CurrentToken != null && CurrentToken.Code != 14)
+                    AddError("Ожидалась '}'", CurrentToken);
+
+                    Token missingCloseBrace = new Token
+                    {
+                        Code = 13,
+                        Lexeme = "}",
+                        Position = CurrentToken != null ? CurrentToken.Position : "end"
+                    };
+
+                    if (_currentIndex >= _tokens.Count)
+                    {
+                        _tokens.Add(missingCloseBrace);
+                    }
+                    else
+                    {
+                        _tokens.Insert(_currentIndex, missingCloseBrace);
+                    }
+
+                    if (CurrentToken == null || CurrentToken.Code != 13)
+                    {
                         MoveNext();
+                    }
                 }
                 else
                 {
@@ -200,7 +244,7 @@ public class Parser
             }
             else
             {
-                AddError("'{'", CurrentToken);
+                AddError("Ожидалось '{'", CurrentToken);
             }
         }
     }
@@ -420,12 +464,24 @@ public class Parser
                     }
                     break;
 
-                case 16:
-                case 18:
-                case 19:
-                case 20: // Операторы
+                case 16: // '+'
+                case 18: // '-'
+                case 19: // '*'
+                case 20: // '/'
+                         // Сохраним текущий оператор для проверки следующего токена
+                    int currentOp = CurrentToken.Code;
                     MoveNext();
-                    // Пропускаем проверку если следующий токен неожиданный (code == 15)
+
+                    // Проверка на оператор после оператора
+                    if (CurrentToken != null &&
+                        (CurrentToken.Code == 16 || CurrentToken.Code == 18 ||
+                         CurrentToken.Code == 19 || CurrentToken.Code == 20))
+                    {
+                        AddError("Ожидался идентификатор между операторами", CurrentToken);
+                        continue;
+                    }
+
+                    // Базовая проверка выражения после оператора
                     if (CurrentToken != null && CurrentToken.Code != 15 &&
                         CurrentToken.Code != 10 && CurrentToken.Code != 21 && CurrentToken.Code != 9)
                     {
@@ -443,6 +499,7 @@ public class Parser
             }
         }
     }
+
 
 
     private void End()
@@ -464,6 +521,12 @@ public class Parser
         else if (result)
         {
             MoveNext(); // Пропускаем точку с запятой
+        }
+
+        // Добавляем проверку на отсутствие закрывающей скобки '}'
+        if (!Errors.Any(e => e.Message.Contains("}'")))
+        {
+            AddError("Ожидалась '}'", null);
         }
     }
 }
