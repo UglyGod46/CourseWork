@@ -3,6 +3,7 @@ using ICSharpCode.AvalonEdit.Highlighting;
 using Microsoft.Win32;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Windows;
@@ -20,7 +21,7 @@ namespace WpfApp1
         private readonly EditManager editManager;
         private readonly HelpManager helpManager;
 
-        private double _fontSize = 14; 
+        private double _fontSize = 14;
 
         public double FontSize
         {
@@ -30,10 +31,21 @@ namespace WpfApp1
                 if (_fontSize != value)
                 {
                     _fontSize = value;
+                    // Обновляем размер шрифта для всех элементов
                     InputTextEditor.FontSize = value;
-                    OutputRichTextBox.FontSize = value; 
+                    LexerOutputRichTextBox.FontSize = value;
+                    ParserOutputRichTextBox.FontSize = value;
+                    OnPropertyChanged(nameof(FontSize)); // Уведомляем об изменении
                 }
             }
+        }
+
+        // Реализация INotifyPropertyChanged для уведомлений об изменении свойств
+        public event PropertyChangedEventHandler PropertyChanged;
+
+        protected virtual void OnPropertyChanged(string propertyName)
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
 
         public MainWindow()
@@ -139,112 +151,83 @@ namespace WpfApp1
 
         private void AnalyzeButton_Click(object sender, RoutedEventArgs e)
         {
-            OutputRichTextBox.Document.Blocks.Clear();
+            // Очищаем RichTextBox
+            LexerOutputRichTextBox.Document.Blocks.Clear();
+            ParserOutputRichTextBox.Document.Blocks.Clear();
+
             string input = InputTextEditor.Text;
 
             // Лексический анализ
-            Lexer lexer = new Lexer(input);
-            List<Token> tokens = lexer.Tokenize();
+            Lexer lexer = new Lexer();
+            List<Token> tokens = lexer.Analyze(input);
+
+            // Вывод токенов в виде таблицы
+            var lexerTable = new Table();
+            lexerTable.Columns.Add(new TableColumn { Width = new GridLength(1, GridUnitType.Star) });
+            lexerTable.Columns.Add(new TableColumn { Width = new GridLength(1, GridUnitType.Star) });
+            lexerTable.Columns.Add(new TableColumn { Width = new GridLength(1, GridUnitType.Star) });
+
+            var lexerHeaderRowGroup = new TableRowGroup();
+            var lexerHeaderRow = new TableRow { Background = Brushes.LightGray };
+            lexerHeaderRow.Cells.Add(new TableCell(new Paragraph(new Run("Тип")) { FontWeight = FontWeights.Bold }));
+            lexerHeaderRow.Cells.Add(new TableCell(new Paragraph(new Run("Лексема")) { FontWeight = FontWeights.Bold }));
+            lexerHeaderRow.Cells.Add(new TableCell(new Paragraph(new Run("Позиция")) { FontWeight = FontWeights.Bold }));
+            lexerHeaderRowGroup.Rows.Add(lexerHeaderRow);
+            lexerTable.RowGroups.Add(lexerHeaderRowGroup);
+
+            var lexerDataRowGroup = new TableRowGroup();
+            foreach (var token in tokens)
+            {
+                var row = new TableRow();
+                row.Cells.Add(new TableCell(new Paragraph(new Run(token.Type))));
+                row.Cells.Add(new TableCell(new Paragraph(new Run(token.Lexeme))));
+                row.Cells.Add(new TableCell(new Paragraph(new Run(token.Position))));
+                lexerDataRowGroup.Rows.Add(row);
+            }
+            lexerTable.RowGroups.Add(lexerDataRowGroup);
+            LexerOutputRichTextBox.Document.Blocks.Add(lexerTable);
 
             // Синтаксический анализ
-            Parser1 parser = new Parser1(tokens);
-            ParseResult result = parser.Parse();
+            Parser parser = new Parser(tokens);
+            parser.Parse();
 
-            // Основной заголовок
-            var headerParagraph = new Paragraph();
-            if (result.IsValid)
+            // Вывод ошибок парсера
+            var parserTable = new Table();
+            parserTable.Columns.Add(new TableColumn { Width = new GridLength(2, GridUnitType.Star) });
+            parserTable.Columns.Add(new TableColumn { Width = new GridLength(1, GridUnitType.Star) });
+
+            var parserHeaderRowGroup = new TableRowGroup();
+            var parserHeaderRow = new TableRow { Background = Brushes.LightGray };
+            parserHeaderRow.Cells.Add(new TableCell(new Paragraph(new Run("Описание ошибки")) { FontWeight = FontWeights.Bold }));
+            parserHeaderRow.Cells.Add(new TableCell(new Paragraph(new Run("Позиция")) { FontWeight = FontWeights.Bold }));
+            parserHeaderRowGroup.Rows.Add(parserHeaderRow);
+            parserTable.RowGroups.Add(parserHeaderRowGroup);
+
+            var parserDataRowGroup = new TableRowGroup();
+            if (parser.Errors.Count == 0)
             {
-                headerParagraph.Inlines.Add(new Run("✓ Синтаксический анализ завершен успешно")
+                var row = new TableRow();
+                row.Cells.Add(new TableCell(new Paragraph(new Run("✓ Синтаксический анализ завершен успешно"))
                 {
                     Foreground = Brushes.Green,
-                    FontWeight = FontWeights.Bold,
-                    FontSize = 14
-                });
+                    FontWeight = FontWeights.Bold
+                }));
+                row.Cells.Add(new TableCell(new Paragraph(new Run(""))));
+                parserDataRowGroup.Rows.Add(row);
             }
             else
             {
-                headerParagraph.Inlines.Add(new Run($"× Найдено {result.Errors.Count} синтаксических ошибок")
+                foreach (var error in parser.Errors)
                 {
-                    Foreground = Brushes.Red,
-                    FontWeight = FontWeights.Bold,
-                    FontSize = 14
-                });
-            }
-            OutputRichTextBox.Document.Blocks.Add(headerParagraph);
-
-            if (!result.IsValid)
-            {
-                // Создаем таблицу для ошибок
-                var errorsTable = new Table
-                {
-                    CellSpacing = 5,
-                    Background = Brushes.White,
-                    Margin = new Thickness(0, 10, 0, 0),
-                    BorderBrush = Brushes.Gray,
-                    BorderThickness = new Thickness(1)
-                };
-
-                // Настраиваем колонки
-                errorsTable.Columns.Add(new TableColumn { Width = new GridLength(70, GridUnitType.Star) });
-                errorsTable.Columns.Add(new TableColumn { Width = new GridLength(30, GridUnitType.Star) });
-
-                // Группа строк для заголовка
-                var headerGroup = new TableRowGroup();
-                var headerRow = new TableRow
-                {
-                    Background = Brushes.LightGray,
-                    FontWeight = FontWeights.Bold
-                };
-
-                headerRow.Cells.Add(new TableCell(new Paragraph(new Run("Описание ошибки"))
-                {
-                    BorderThickness = new Thickness(0, 0, 1, 1),
-                    BorderBrush = Brushes.Gray,
-                    Padding = new Thickness(5)
-                }));
-
-                headerRow.Cells.Add(new TableCell(new Paragraph(new Run("Позиция"))
-                {
-                    BorderThickness = new Thickness(0, 0, 0, 1),
-                    BorderBrush = Brushes.Gray,
-                    Padding = new Thickness(5)
-                }));
-
-                headerGroup.Rows.Add(headerRow);
-                errorsTable.RowGroups.Add(headerGroup);
-
-                // Группа строк для данных
-                var dataGroup = new TableRowGroup();
-
-                foreach (var error in result.Errors)
-                {
-                    var errorParts = error.Split(new[] { '(' }, 2);
                     var row = new TableRow();
-
-                    // Ячейка с описанием ошибки
-                    var descriptionCell = new TableCell(new Paragraph(new Run(errorParts[0].Trim())))
-                    {
-                        BorderThickness = new Thickness(0, 0, 1, 0),
-                        BorderBrush = Brushes.LightGray,
-                        Padding = new Thickness(5)
-                    };
-                    row.Cells.Add(descriptionCell);
-
-                    // Ячейка с позицией
-                    var positionCell = new TableCell();
-                    if (errorParts.Length > 1)
-                    {
-                        positionCell.Blocks.Add(new Paragraph(new Run(errorParts[1].TrimEnd(')'))));
-                    }
-                    positionCell.Padding = new Thickness(5);
-                    row.Cells.Add(positionCell);
-
-                    dataGroup.Rows.Add(row);
+                    row.Cells.Add(new TableCell(new Paragraph(new Run(error.Message)) { Foreground = Brushes.Red }));
+                    row.Cells.Add(new TableCell(new Paragraph(new Run(error.Position))));
+                    parserDataRowGroup.Rows.Add(row);
                 }
-
-                errorsTable.RowGroups.Add(dataGroup);
-                OutputRichTextBox.Document.Blocks.Add(errorsTable);
             }
+            parserTable.RowGroups.Add(parserDataRowGroup);
+            ParserOutputRichTextBox.Document.Blocks.Add(parserTable);
         }
+
     }
 }

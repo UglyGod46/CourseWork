@@ -3,279 +3,467 @@ using System.Collections.Generic;
 using System.Linq;
 using WpfApp1.models;
 
-public class ParseResult
+public class Parser
 {
-    public bool IsValid => Errors.Count == 0;
-    public List<string> Errors { get; } = new List<string>();
-}
+    private List<Token> _tokens;
+    private int _currentIndex;
+    public List<ParseError> Errors { get; } = new List<ParseError>();
+    private HashSet<string> _parameters = new HashSet<string>();
 
-public class Parser1
-{
-    private readonly List<Token> _tokens;
-    private int _currentTokenIndex;
-    private Token CurrentToken => _currentTokenIndex < _tokens.Count ? _tokens[_currentTokenIndex] : null;
-
-    public Parser1(List<Token> tokens)
+    public class ParseError
     {
-        _tokens = tokens;
-        _currentTokenIndex = 0;
-    }
+        public string Message { get; }
+        public string Position { get; }
 
-    public ParseResult Parse()
-    {
-        var result = new ParseResult();
-
-        try
+        public ParseError(string message, string position)
         {
-            ParseFunction(result);
-
-            // Проверим, что разобрали все токены
-            if (_currentTokenIndex < _tokens.Count)
-            {
-                AddError(result, $"Ожидался конец файла, но найден {CurrentToken.Value}", CurrentToken.StartIndex);
-            }
-        }
-        catch (ParseException ex)
-        {
-            AddError(result, ex.Message, ex.Position);
+            Message = message;
+            Position = position;
         }
 
-        return result;
+        public override string ToString() => $"{Message}\tПозиция: {Position}";
     }
 
-    private void ParseFunction(ParseResult result)
+    public Parser(List<Token> tokens)
     {
-        TryParse(() => {
-            ExpectKeyword("function", "объявления функции");
-            SkipSeparators();
-            ParseFunctionName();
-            SkipSeparators();
-            ExpectPunctuation("(", "списка параметров");
-            ParseParameterList(result);
-            ExpectPunctuation(")", "списка параметров");
-            SkipSeparators();
-            ParseBody(result);
-        }, result, new[] { "}" });
+        _tokens = tokens.Where(t => t.Code != 7 && t.Code != 8).ToList();
+        _currentIndex = 0;
     }
 
-    private void ParseFunctionName()
+    private Token CurrentToken => _currentIndex < _tokens.Count ? _tokens[_currentIndex] : null;
+    private void MoveNext() => _currentIndex++;
+
+    private void AddError(string expected, Token actual)
     {
-        if (CurrentToken?.Type != TokenType.Identifier)
+        if (actual == null) return;
+        Errors.Add(new ParseError($"{expected}, получено '{actual.Lexeme}'", actual.Position));
+    }
+
+    private void AddError1(string expected, Token actual)
+    {
+        if (actual == null) return;
+        Errors.Add(new ParseError($"Ожидалось {expected}, получено '{actual.Lexeme}'", actual.Position));
+    }
+
+    private bool Check(int expectedCode, string expectedName)
+    {
+        if (CurrentToken?.Code == expectedCode) return true;
+        AddError(expectedName, CurrentToken);
+        return false;
+    }
+
+    private bool Check1(int expectedCode, string expectedName)
+    {
+        if (CurrentToken?.Code == expectedCode) return true;
+        AddError1(expectedName, CurrentToken);
+        return false;
+    }
+
+    public void Parse()
+    {
+        ParseFunction();
+        End(); // Проверяем точку с запятой после функции
+
+        // Проверяем, что больше нет токенов
+        if (CurrentToken != null)
         {
-            throw NewParseError("идентификатор имени функции");
+            AddError("Неожиданный токен после функции", CurrentToken);
         }
-        _currentTokenIndex++;
     }
 
-    private void ParseParameterList(ParseResult result)
+    private void ParseFunction()
     {
-        TryParse(() => {
-            SkipSeparators();
+        // 1. Проверяем ключевое слово 'function'
+        if (CurrentToken == null) return;
 
-            if (CurrentToken?.Value == ")")
+        if (CurrentToken.Code == 1) // Правильное ключевое слово
+        {
+            MoveNext();
+        }
+        else
+        {
+            // Проверяем, похоже ли на function (начинается с 'func')
+            bool looksLikeFunction = CurrentToken.Lexeme?.StartsWith("func", StringComparison.Ordinal) ?? false;
+            if (CurrentToken.Code == 15)
             {
-                return; // Пустой список параметров
+                AddError("Неожиданный токен", CurrentToken);
             }
-
-            ParseIdentifier();
-
-            while (CurrentToken?.Value == ",")
+            else if (CurrentToken.Lexeme.StartsWith("function", StringComparison.Ordinal) && CurrentToken.Code == 10)
             {
-                _currentTokenIndex++;
-                SkipSeparators();
-                ParseIdentifier();
-                SkipSeparators();
+                AddError("Ожидался пробел после function", CurrentToken);
             }
-        }, result, new[] { ")" });
-    }
-
-    private void ParseBody(ParseResult result)
-    {
-        TryParse(() => {
-            ExpectPunctuation("{", "начала тела функции");
-            SkipSeparators();
-
-            while (_currentTokenIndex < _tokens.Count && CurrentToken?.Value != "}")
+            else if (looksLikeFunction)
             {
-                ParseStatement(result);
-                SkipSeparators();
-            }
-
-            ExpectPunctuation("}", "окончания тела функции");
-
-            // Необязательная точка с запятой после тела функции
-            if (CurrentToken?.Value == ";")
-            {
-                _currentTokenIndex++;
-            }
-        }, result, new[] { "}" });
-    }
-
-    private void ParseStatement(ParseResult result)
-    {
-        TryParse(() => {
-            ParseReturnStatement(result);
-            ExpectEndOfStatement();
-        }, result, new[] { "}", ";" });
-    }
-
-    private void ParseReturnStatement(ParseResult result)
-    {
-        TryParse(() => {
-            ExpectKeyword("return", "оператора return");
-            SkipSeparators();
-            ParseExpression(result);
-        }, result, new[] { ";" });
-    }
-
-    private void ParseExpression(ParseResult result)
-    {
-        TryParse(() => {
-            ParseTerm(result);
-
-            while (_currentTokenIndex < _tokens.Count &&
-                  (CurrentToken.Value == "+" || CurrentToken.Value == "-"))
-            {
-                _currentTokenIndex++;
-                SkipSeparators();
-                ParseTerm(result);
-            }
-        }, result, new[] { ")", ";" });
-    }
-
-    private void ParseTerm(ParseResult result)
-    {
-        TryParse(() => {
-            ParseFactor(result);
-
-            while (_currentTokenIndex < _tokens.Count &&
-                  (CurrentToken.Value == "*" || CurrentToken.Value == "/"))
-            {
-                _currentTokenIndex++;
-                SkipSeparators();
-                ParseFactor(result);
-            }
-        }, result, new[] { ")", ";", "+", "-" });
-    }
-
-    private void ParseFactor(ParseResult result)
-    {
-        TryParse(() => {
-            SkipSeparators();
-
-            if (CurrentToken?.Value == "(")
-            {
-                _currentTokenIndex++;
-                SkipSeparators();
-                ParseExpression(result);
-                ExpectPunctuation(")", "выражения в скобках");
-            }
-            else if (CurrentToken?.Type == TokenType.Identifier ||
-                    CurrentToken?.Type == TokenType.Number)
-            {
-                _currentTokenIndex++;
+                AddError("Ожидалось ключевое слово 'function'", CurrentToken);
             }
             else
             {
-                throw NewParseError("идентификатор, число или '('");
+                AddError("Ожидалось объявление функции (ожидалось 'function')", CurrentToken);
             }
 
-            SkipSeparators();
-        }, result, new[] { ")", ";", "+", "-", "*", "/" });
-    }
-
-    private void ParseIdentifier()
-    {
-        if (CurrentToken?.Type != TokenType.Identifier)
-        {
-            throw NewParseError("идентификатор");
-        }
-        _currentTokenIndex++;
-    }
-
-    private void TryParse(Action parseAction, ParseResult result, string[] recoveryTokens)
-    {
-        try
-        {
-            parseAction();
-        }
-        catch (ParseException ex)
-        {
-            AddError(result, ex.Message, ex.Position);
-            RecoverFromError(recoveryTokens);
-        }
-    }
-
-    private void RecoverFromError(string[] recoveryTokens)
-    {
-        while (_currentTokenIndex < _tokens.Count &&
-              !recoveryTokens.Contains(CurrentToken.Value))
-        {
-            _currentTokenIndex++;
+            // Продолжаем анализ, даже если ключевое слово неверное
+            MoveNext(); 
         }
 
-        if (_currentTokenIndex < _tokens.Count &&
-            recoveryTokens.Contains(CurrentToken.Value))
+        if (CurrentToken?.Code == 15)
         {
-            _currentTokenIndex++;
+            AddError("Неожиданный токен", CurrentToken);
+            MoveNext();
+        }
+
+        // 2. Проверяем имя функции
+
+        if (CurrentToken.Code == 10)
+        {
+            MoveNext();
+        } else if (CurrentToken.Code == 15)
+        {
+            AddError("Неожиданный токен", CurrentToken);
+            MoveNext();
+        }
+        else
+        {
+            AddError("Ожидалось имя функции", CurrentToken);
+        }
+
+        // 3. Проверяем параметры
+        if (CurrentToken?.Code == 9) // '('
+        {
+            MoveNext();
+            ParseParameters();
+
+            // Проверяем закрывающую скобку параметров
+            if (CurrentToken?.Code != 11)
+            {
+                AddError("Ожидалась ')'", CurrentToken);
+
+            }
+            else
+            {
+                MoveNext();
+            }
+        }
+        else
+        {
+            AddError("Ожидалась '(' после имени функции", CurrentToken);
+
+            ParseParameters();
+
+            // Проверяем закрывающую скобку параметров
+            if (!Check1(11, "')'"))
+            {
+                // Если не нашли ')', пропускаем до '{'
+
+                
+            }
+            else
+            {
+                MoveNext();
+            }
+        }
+
+        // 4. Проверяем тело функции
+        if (CurrentToken?.Code == 12) // '{'
+        {
+            MoveNext();
+            ParseReturnStatement();
+
+            if (!Check1(13, "'}'"))
+            {
+                // Пропускаем до ';'
+                while (CurrentToken != null && CurrentToken.Code != 14)
+                    MoveNext();
+            }
+            else
+            {
+                MoveNext();
+            }
+        }
+        else
+        {
+            // Если нет '{', но есть 'return', считаем это началом тела
+            if (CurrentToken?.Code != 12) // 'return'
+            {
+                AddError("Ожидалось '{'", CurrentToken);
+                ParseReturnStatement();
+
+                if (!Check1(13, "'}'"))
+                {
+                    // Пропускаем до ';'
+                    while (CurrentToken != null && CurrentToken.Code != 14)
+                        MoveNext();
+                }
+                else
+                {
+                    MoveNext();
+                }
+            }
+            else
+            {
+                AddError("'{'", CurrentToken);
+            }
         }
     }
 
-    private void ExpectKeyword(string keyword, string context)
+    private void CheckFunctionBodyEnd()
     {
-        if (CurrentToken?.Type != TokenType.Keyword || CurrentToken?.Value != keyword)
+        if (CurrentToken?.Code != 13) // Если нет '}'
         {
-            throw NewParseError($"ключевое слово '{keyword}' ({context})");
-        }
-        _currentTokenIndex++;
-    }
+            // Создаем искусственный токен для ошибки
+            Token endToken = new Token
+            {
+                Code = 13,
+                Lexeme = "конец тела функции",
+                Position = CurrentToken != null ? CurrentToken.Position : "end"
+            };
+            AddError("Ожидалась '}'", endToken);
 
-    private void ExpectPunctuation(string punctuation, string context)
-    {
-        if (CurrentToken?.Type != TokenType.Punctuation || CurrentToken?.Value != punctuation)
-        {
-            throw NewParseError($"символ '{punctuation}' ({context})");
+            // Пропускаем до точки с запятой
+            while (CurrentToken != null && CurrentToken.Code != 14)
+                MoveNext();
         }
-        _currentTokenIndex++;
-    }
-
-    private void ExpectEndOfStatement()
-    {
-        if (CurrentToken?.Type != TokenType.EndOfStatement)
+        else
         {
-            throw NewParseError("символ ';'");
-        }
-        _currentTokenIndex++;
-    }
-
-    private void SkipSeparators()
-    {
-        while (_currentTokenIndex < _tokens.Count &&
-              _tokens[_currentTokenIndex].Type == TokenType.Separator)
-        {
-            _currentTokenIndex++;
+            MoveNext();
         }
     }
 
-    private ParseException NewParseError(string expected)
+
+    private void ParseParameters()
     {
-        return new ParseException(
-            $"Ожидался {expected}, но найден {CurrentToken?.Value ?? "конец файла"}",
-            CurrentToken?.StartIndex ?? _tokens.Last().EndIndex);
+        _parameters.Clear();
+        bool expectParam = true;
+        int safetyCounter = 0;
+        const int maxIterations = 100;
+
+        while (CurrentToken != null &&
+               CurrentToken.Code != 11 &&    // not ')'
+               CurrentToken.Code != 12 &&    // not '{'
+               safetyCounter++ < maxIterations)
+        {
+            if (CurrentToken.Code == 15) // Проверка на неожиданный токен
+            {
+                AddError("Неожиданный токен в параметрах", CurrentToken);
+                MoveNext();
+                continue;
+            }
+
+            if (expectParam)
+            {
+                if (CurrentToken.Code == 10) // IDENT
+                {
+                    _parameters.Add(CurrentToken.Lexeme);
+                    MoveNext();
+                    expectParam = false;
+
+                    // После параметра ожидаем либо запятую, либо закрывающую скобку, либо '{'
+                    if (CurrentToken?.Code == 10) // Следующий токен тоже идентификатор
+                    {
+                        AddError("Ожидалась ',' между идентификаторами", CurrentToken);
+                        // Продолжаем как будто запятая есть
+                        expectParam = true;
+                    }
+                    else if (CurrentToken?.Code != 17 &&
+                             CurrentToken?.Code != 11 &&
+                             CurrentToken?.Code != 12)
+                    {
+                        // Не запятая, не закрывающая скобка и не '{' - пропускаем без ошибки
+                        expectParam = true;
+                    }
+                }
+                else if (CurrentToken.Code == 17) // ','
+                {
+                    // Лишняя запятая
+                    if (_currentIndex > 0 && _tokens[_currentIndex - 1].Code == 17) // Previous was also comma
+                    {
+                        AddError("Ожидался параметр после ','", CurrentToken);
+                        MoveNext();
+                    }
+                    else if (_currentIndex == 0 || // No parameters before comma
+                            _tokens[_currentIndex - 1].Code == 9) // Previous was '('
+                    {
+                        AddError("Ожидался параметр перед ','", CurrentToken);
+                        MoveNext();
+                    }
+                    else // Normal case of comma between parameters
+                    {
+                        MoveNext();
+                        expectParam = true;
+                    }
+                }
+                else if (CurrentToken.Code == 12) // '{' - неожиданное начало тела функции
+                {
+                    // Если перед '{' была запятая
+                    if (_currentIndex > 0 && _tokens[_currentIndex - 1].Code == 17)
+                    {
+                        AddError("Ожидался параметр после ','", _tokens[_currentIndex - 1]);
+                    }
+                    break;
+                }
+                else
+                {
+                    break;
+                }
+            }
+            else
+            {
+                if (CurrentToken.Code == 17) // ','
+                {
+                    MoveNext();
+                    expectParam = true;
+                }
+                else if (CurrentToken.Code == 10) // IDENT без запятой
+                {
+                    AddError("Ожидалась ',' между идентификаторами", CurrentToken);
+                    // Продолжаем как будто запятая есть
+                    expectParam = true;
+                }
+                else if (CurrentToken.Code != 11 && CurrentToken.Code != 12)
+                {
+                    // Не запятая, не закрывающая скобка и не '{' - пропускаем без ошибки
+                    expectParam = true;
+                }
+                else
+                {
+                    // Встретили '}' или '{' - выходим
+                    break;
+                }
+            }
+        }
+
+        if (safetyCounter >= maxIterations)
+        {
+            AddError("Ошибка разбора параметров (возможное зацикливание)", CurrentToken);
+        }
+
+        // Проверка на trailing comma выполняется только при наличии ')'
+        if (CurrentToken?.Code == 11 &&
+            _currentIndex > 0 &&
+            _tokens[_currentIndex - 1].Code == 17)
+        {
+            AddError("Ожидался параметр после ','", _tokens[_currentIndex - 1]);
+        }
+        else if (CurrentToken?.Code == 12 &&
+                 _currentIndex > 0 &&
+                 _tokens[_currentIndex - 1].Code == 17)
+        {
+            AddError("Ожидался параметр после ','", _tokens[_currentIndex - 1]);
+        }
     }
 
-    private void AddError(ParseResult result, string message, int position)
+
+    private void ParseReturnStatement()
     {
-        result.Errors.Add($"{message} (позиция {position})");
+        if (CurrentToken == null) return;
+
+        if (CurrentToken.Code == 6) // Правильное ключевое слово return
+        {
+            MoveNext();
+        }
+        else
+        {
+            // Проверяем, похоже ли на return (начинается с 'r' или 'ret')
+            bool looksLikeReturn = CurrentToken.Lexeme?.StartsWith("r", StringComparison.Ordinal) ?? false;
+            if(CurrentToken.Code == 15)
+            {
+                AddError("Неожиданный токен", CurrentToken);
+            }
+            else if (looksLikeReturn)
+            {
+                AddError("Ожидался 'return'", CurrentToken);
+            }
+            else
+            {
+                AddError("Ожидался оператор return", CurrentToken);
+            }
+
+            // Продолжаем анализ, даже если ключевое слово неверное
+            MoveNext();
+        }
+
+        ParseExpression();
     }
-}
 
-public class ParseException : Exception
-{
-    public int Position { get; }
-
-    public ParseException(string message, int position) : base(message)
+    private void ParseExpression()
     {
-        Position = position;
+        while (CurrentToken != null && CurrentToken.Code != 13 && CurrentToken.Code != 14) // '}' или ';'
+        {
+            // Проверка на неожиданный токен (code == 15)
+            if (CurrentToken.Code == 15)
+            {
+                AddError("Неожиданный токен в выражении", CurrentToken);
+                MoveNext();
+                continue;
+            }
+
+            switch (CurrentToken.Code)
+            {
+                case 9: // '('
+                    MoveNext();
+                    ParseExpression();
+                    if (!Check1(11, "')'")) return;
+                    MoveNext();
+                    break;
+
+                case 10: // IDENT
+                case 21: // NUMBER
+                         // Сохраняем предыдущий токен
+                    var prevToken = _currentIndex > 0 ? _tokens[_currentIndex - 1] : null;
+                    MoveNext();
+
+                    // Пропускаем проверку если следующий токен неожиданный (code == 15)
+                    if (CurrentToken != null && CurrentToken.Code != 15 &&
+                        (CurrentToken.Code == 10 || CurrentToken.Code == 21 || CurrentToken.Code == 9))
+                    {
+                        // Между двумя идентификаторами/числами/скобкой должен быть оператор
+                        AddError("Ожидался оператор между выражениями", CurrentToken);
+                    }
+                    break;
+
+                case 16:
+                case 18:
+                case 19:
+                case 20: // Операторы
+                    MoveNext();
+                    // Пропускаем проверку если следующий токен неожиданный (code == 15)
+                    if (CurrentToken != null && CurrentToken.Code != 15 &&
+                        CurrentToken.Code != 10 && CurrentToken.Code != 21 && CurrentToken.Code != 9)
+                    {
+                        AddError("Ожидалось выражение после оператора", CurrentToken);
+                    }
+                    break;
+
+                case 11: // ')'
+                    return;
+
+                default:
+                    AddError("Ожидалась часть выражения", CurrentToken);
+                    MoveNext();
+                    break;
+            }
+        }
+    }
+
+
+    private void End()
+    {
+        int lengthHistory = Errors.Count;
+        bool result = Check1(14, "';'");
+
+        if (!result && lengthHistory == Errors.Count)
+        {
+            // Создаем искусственный токен для ошибки
+            Token endToken = new Token
+            {
+                Code = 14,
+                Lexeme = "конец функции",
+                Position = CurrentToken != null ? CurrentToken.Position : "end"
+            };
+            AddError("Ожидался ';' после объявления функции", endToken);
+        }
+        else if (result)
+        {
+            MoveNext(); // Пропускаем точку с запятой
+        }
     }
 }

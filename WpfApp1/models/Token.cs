@@ -6,29 +6,11 @@ using System.Threading.Tasks;
 
 namespace WpfApp1.models
 {
-    public enum TokenType
-    {
-        Keyword,         // Ключевые слова (function, return)
-        Identifier,      // Идентификаторы (имена переменных, функций)
-        Number,          // Числа
-        Operator,        // Операторы (+, -, *, /, =)
-        Punctuation,     // Разделители ((), {}, ,)
-        EndOfStatement,  // Конец оператора (;)
-        Invalid,         // Недопустимые символы
-        Error,            // Ошибка (например, первое слово не function)
-        Separator      
-    }
-
     public class Token
     {
-        public TokenType Type { get; set; }
-        public string Value { get; set; }
-        public int StartIndex { get; set; }
-        public int EndIndex { get; set; }
-
-        public override string ToString()
-        {
-            return $"{(int)Type} - {Type} - {Value} - с {StartIndex + 1} по {EndIndex + 1} символ";
-        }
+        public int Code { get; set; }
+        public string Type { get; set; }
+        public string Lexeme { get; set; }
+        public string Position { get; set; }
     }
 }

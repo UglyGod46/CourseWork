@@ -86,7 +86,9 @@
                 </Button>
                 <Separator />
 
-                <ComboBox x:Name="FontSizeComboBox" Width="80" VerticalAlignment="Center" SelectedValue="{Binding FontSize}">
+                <ComboBox x:Name="FontSizeComboBox" Width="80" VerticalAlignment="Center" 
+                SelectedValue="{Binding FontSize, Mode=TwoWay}" 
+                SelectedValuePath="Content">
                     <ComboBoxItem>12</ComboBoxItem>
                     <ComboBoxItem>14</ComboBoxItem>
                     <ComboBoxItem>16</ComboBoxItem>
@@ -118,13 +120,15 @@
                 VerticalScrollBarVisibility="Auto" 
                  />
 
-            <!-- RichTextBox для вывода -->
-            <RichTextBox 
-                x:Name="OutputRichTextBox" 
-                IsReadOnly="True" 
-                FontSize="{Binding FontSize}" 
-                VerticalScrollBarVisibility="Auto" 
-                Grid.Row="1" Grid.Column="1" />
+            <!-- TabControl для вывода -->
+            <TabControl Grid.Row="1" Grid.Column="1" x:Name="OutputTabControl">
+                <TabItem Header="Лексер">
+                    <RichTextBox x:Name="LexerOutputRichTextBox" IsReadOnly="True" VerticalScrollBarVisibility="Auto" />
+                </TabItem>
+                <TabItem Header="Парсер">
+                    <RichTextBox x:Name="ParserOutputRichTextBox" IsReadOnly="True" VerticalScrollBarVisibility="Auto" />
+                </TabItem>
+            </TabControl>
         </Grid>
     </DockPanel>
 </Window>

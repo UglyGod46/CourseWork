@@ -1,242 +1,180 @@
 ﻿using System.Collections.Generic;
 using System;
 using WpfApp1.models;
+using System.Linq;
 
 public class Lexer
 {
-    private readonly string _input;
-    private int _position;
-
-    public Lexer(string input)
+    private readonly Dictionary<string, int> _keywords = new Dictionary<string, int>
     {
-        _input = input;
-        _position = 0;
-    }
+        { "function", 1 }, { "return", 6 }
+    };
 
-    public List<Token> Tokenize()
+    // Допустимые символы для идентификаторов (только буквы, цифры и _)
+    private readonly HashSet<char> _validIdChars = new HashSet<char>(
+        "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_0123456789"
+    );
+
+    private bool _expectSpace = false;
+
+    public List<Token> Analyze(string input)
     {
         var tokens = new List<Token>();
+        int pos = 0;
+        _expectSpace = false;
 
-        while (_position < _input.Length)
+        while (pos < input.Length)
         {
-            char currentChar = _input[_position];
+            char current = input[pos];
 
-            if (char.IsWhiteSpace(currentChar))
+            // Пропускаем пробелы и переводы строк
+            if (char.IsWhiteSpace(current))
             {
-                MatchSeparator();
+                if (_expectSpace && current == ' ')
+                {
+                    tokens.Add(new Token
+                    {
+                        Code = 7,
+                        Type = "Пробел",
+                        Lexeme = " ",
+                        Position = $"{pos + 1}"
+                    });
+                    _expectSpace = false;
+                }
+                pos++;
                 continue;
             }
 
-            if (char.IsLetter(currentChar) || currentChar == '_')
+            // Обработка идентификаторов и ключевых слов
+            if (char.IsLetter(current) || current == '_')
             {
-                Token token = ParseIdentifierOrKeyword();
+                int start = pos;
+                bool isValidId = true;
 
-                // Проверяем на наличие кириллицы в идентификаторе или ключевом слове
-                if (ContainsCyrillic(token.Value))
+                // Собираем весь идентификатор
+                while (pos < input.Length &&
+                      (char.IsLetterOrDigit(input[pos]) || input[pos] == '_' || !IsSeparator(input[pos])))
                 {
-                    token.Type = TokenType.Error;
-                    token.Value = token.Value;
+                    if (!_validIdChars.Contains(input[pos]))
+                        isValidId = false;
+                    pos++;
                 }
 
-                tokens.Add(token);
+                string value = input.Substring(start, pos - start);
 
-                if ((token.Type == TokenType.Keyword) &&
-                    (token.Value.StartsWith("function") || token.Value.StartsWith("return")))
+                // Проверяем на ключевые слова только если нет ошибок
+                if (isValidId)
                 {
-                    int separatorStart = _position;
-                    MatchSeparator();
-                    if (separatorStart != _position)
+                    if (_keywords.TryGetValue(value, out int code))
                     {
                         tokens.Add(new Token
                         {
-                            Type = TokenType.Separator,
-                            Value = " ",
-                            StartIndex = separatorStart,
-                            EndIndex = _position - 1
+                            Code = code,
+                            Type = "Ключевое слово",
+                            Lexeme = value,
+                            Position = $"{start + 1}-{pos}"
+                        });
+
+                        if (code == 1 || code == 6) _expectSpace = true;
+                    }
+                    else
+                    {
+                        tokens.Add(new Token
+                        {
+                            Code = 10,
+                            Type = "Идентификатор",
+                            Lexeme = value,
+                            Position = $"{start + 1}-{pos}"
                         });
                     }
                 }
+                else
+                {
+                    tokens.Add(new Token
+                    {
+                        Code = 15,
+                        Type = "Ошибка",
+                        Lexeme = value,
+                        Position = $"{start + 1}-{pos}"
+                    });
+                }
+                continue;
             }
-            else if (char.IsDigit(currentChar))
+
+            // Числа
+            if (char.IsDigit(current))
             {
-                tokens.Add(ParseNumber());
-            }
-            else if (IsOperator(currentChar))
-            {
-                tokens.Add(ParseOperator());
-            }
-            else if (IsPunctuation(currentChar))
-            {
-                tokens.Add(ParsePunctuation());
-            }
-            else if (IsEndOfStatement(currentChar))
-            {
-                tokens.Add(ParseEndOfStatement());
-            }
-            else if (IsCyrillic(currentChar))
-            {
-                // Обработка отдельных кириллических символов
+                int start = pos;
+                while (pos < input.Length && char.IsDigit(input[pos]))
+                    pos++;
+
                 tokens.Add(new Token
                 {
-                    Type = TokenType.Error,
-                    Value = "Ошибка: кириллический символ - " + currentChar,
-                    StartIndex = _position,
-                    EndIndex = _position
+                    Code = 21,
+                    Type = "Число",
+                    Lexeme = input.Substring(start, pos - start),
+                    Position = $"{start + 1}-{pos}"
                 });
-                _position++;
+                continue;
             }
-            else
+
+            // Обработка операторов и символов
+            switch (current)
             {
-                tokens.Add(new Token
-                {
-                    Type = TokenType.Invalid,
-                    Value = currentChar.ToString(),
-                    StartIndex = _position,
-                    EndIndex = _position
-                });
-                _position++;
+                case '+':
+                    tokens.Add(new Token { Code = 16, Type = "Оператор", Lexeme = "+", Position = $"{pos + 1}" });
+                    break;
+                case '-':
+                    tokens.Add(new Token { Code = 18, Type = "Оператор", Lexeme = "-", Position = $"{pos + 1}" });
+                    break;
+                case '*':
+                    tokens.Add(new Token { Code = 19, Type = "Оператор", Lexeme = "*", Position = $"{pos + 1}" });
+                    break;
+                case '/':
+                    tokens.Add(new Token { Code = 20, Type = "Оператор", Lexeme = "/", Position = $"{pos + 1}" });
+                    break;
+                case '(':
+                    tokens.Add(new Token { Code = 9, Type = "Начало параметров", Lexeme = "(", Position = $"{pos + 1}" });
+                    break;
+                case ')':
+                    tokens.Add(new Token { Code = 11, Type = "Конец параметров", Lexeme = ")", Position = $"{pos + 1}" });
+                    break;
+                case '{':
+                    tokens.Add(new Token { Code = 12, Type = "Начало тела", Lexeme = "{", Position = $"{pos + 1}" });
+                    break;
+                case '}':
+                    tokens.Add(new Token { Code = 13, Type = "Конец тела", Lexeme = "}", Position = $"{pos + 1}" });
+                    break;
+                case ',':
+                    tokens.Add(new Token { Code = 17, Type = "Запятая", Lexeme = ",", Position = $"{pos + 1}" });
+                    break;
+                case ';':
+                    tokens.Add(new Token { Code = 14, Type = "Конец объявления", Lexeme = ";", Position = $"{pos + 1}" });
+                    break;
+                default:
+                    // Одиночные недопустимые символы
+                    tokens.Add(new Token
+                    {
+                        Code = 15,
+                        Type = "Ошибка",
+                        Lexeme = current.ToString(),
+                        Position = $"{pos + 1}"
+                    });
+                    break;
             }
+
+            pos++;
+            _expectSpace = false;
         }
 
         return tokens;
     }
 
-    private bool ContainsCyrillic(string text)
+    private bool IsSeparator(char c)
     {
-        foreach (char c in text)
-        {
-            if (IsCyrillic(c))
-                return true;
-        }
-        return false;
-    }
-
-    private bool IsCyrillic(char c)
-    {
-        // Диапазоны символов кириллицы в Unicode
-        return (c >= 'А' && c <= 'я') || c == 'ё' || c == 'Ё';
-    }
-
-    private Token ParseIdentifierOrKeyword()
-    {
-        int start = _position;
-        string value = ParseWhile(c => char.IsLetterOrDigit(c) || c == '_');
-
-        // Проверяем на наличие кириллицы в идентификаторе или ключевом слове
-        if (ContainsCyrillic(value))
-        {
-            return new Token
-            {
-                Type = TokenType.Error,
-                Value = value,
-                StartIndex = start,
-                EndIndex = _position - 1
-            };
-        }
-
-        // Проверяем, является ли value ключевым словом (только если оно точно совпадает)
-        var tokenType = IsKeyword(value) ? TokenType.Keyword : TokenType.Identifier;
-
-        return new Token
-        {
-            Type = tokenType,
-            Value = value,
-            StartIndex = start,
-            EndIndex = _position - 1
-        };
-    }
-
-    // Остальные методы остаются без изменений
-    private Token ParseNumber()
-    {
-        int start = _position;
-        string value = ParseWhile(char.IsDigit);
-        return new Token
-        {
-            Type = TokenType.Number,
-            Value = value,
-            StartIndex = start,
-            EndIndex = _position - 1
-        };
-    }
-
-    private Token ParseOperator()
-    {
-        int start = _position;
-        string value = _input[_position].ToString();
-        _position++;
-        return new Token
-        {
-            Type = TokenType.Operator,
-            Value = value,
-            StartIndex = start,
-            EndIndex = _position - 1
-        };
-    }
-
-    private Token ParsePunctuation()
-    {
-        int start = _position;
-        string value = _input[_position].ToString();
-        _position++;
-        return new Token
-        {
-            Type = TokenType.Punctuation,
-            Value = value,
-            StartIndex = start,
-            EndIndex = _position - 1
-        };
-    }
-
-    private string ParseWhile(Func<char, bool> condition)
-    {
-        int start = _position;
-        while (_position < _input.Length && condition(_input[_position]))
-        {
-            _position++;
-        }
-        return _input.Substring(start, _position - start);
-    }
-
-    private Token ParseEndOfStatement()
-    {
-        int start = _position;
-        string value = _input[_position].ToString();
-        _position++;
-        return new Token
-        {
-            Type = TokenType.EndOfStatement,
-            Value = value,
-            StartIndex = start,
-            EndIndex = _position - 1
-        };
-    }
-
-    private void MatchSeparator()
-    {
-        while (_position < _input.Length && char.IsWhiteSpace(_input[_position]))
-        {
-            _position++;
-        }
-    }
-
-    private bool IsOperator(char c)
-    {
-        return c == '+' || c == '-' || c == '*' || c == '/' || c == '=';
-    }
-
-    private bool IsPunctuation(char c)
-    {
-        return c == '(' || c == ')' || c == '{' || c == '}' || c == ',';
-    }
-
-    private bool IsEndOfStatement(char c)
-    {
-        return c == ';';
-    }
-
-    private bool IsKeyword(string value)
-    {
-        return value == "function" || value == "return";
+        return char.IsWhiteSpace(c) ||
+               c == '+' || c == '-' || c == '*' || c == '/' ||
+               c == '(' || c == ')' || c == '{' || c == '}' ||
+               c == ',' || c == ';';
     }
 }
