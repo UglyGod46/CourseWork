@@ -61,14 +61,26 @@ public class Parser
 
     public void Parse()
     {
-        ParseFunction();
-        End(); // Проверяем точку с запятой после функции
+        // Сначала обрабатываем лексические ошибки
+        var errorTokens = _tokens.Where(t => t.Code == 15).ToList();
+        _tokens = _tokens.Where(t => t.Code != 15).ToList();
+        _currentIndex = 0;
 
-        // Проверяем, что больше нет токенов
-        if (CurrentToken != null)
+        foreach (var token in errorTokens)
+        {
+            Errors.Add(new ParseError($"Невалидный токен '{token.Lexeme}'", token.Position));
+        }
+
+        // Выполняем синтаксический анализ независимо от наличия лексических ошибок
+        ParseFunction();
+
+        // Проверяем только корректные токены после функции
+        if (CurrentToken != null && CurrentToken.Code != 14)
         {
             AddError("Неожиданный токен после функции", CurrentToken);
         }
+
+        End();
     }
 
     private void ParseFunction()
@@ -83,7 +95,7 @@ public class Parser
         else
         {
             // Проверяем, похоже ли на function (начинается с 'func')
-            bool looksLikeFunction = CurrentToken.Lexeme?.StartsWith("func", StringComparison.Ordinal) ?? false;
+            bool looksLikeFunction = CurrentToken.Lexeme?.StartsWith("", StringComparison.Ordinal) ?? false;
             if (CurrentToken.Code == 15)
             {
                 AddError("Неожиданный токен", CurrentToken);
@@ -98,19 +110,15 @@ public class Parser
             }
             else
             {
-                AddError("Ожидалось объявление функции (ожидалось 'function')", CurrentToken);
+                
             }
 
             // Продолжаем анализ, даже если ключевое слово неверное
             MoveNext(); 
         }
 
-        if (CurrentToken?.Code == 15)
-        {
-            AddError("Неожиданный токен", CurrentToken);
-            MoveNext();
-        }
-
+        
+        
         // 2. Проверяем имя функции
 
         if (CurrentToken.Code == 10)
@@ -119,7 +127,10 @@ public class Parser
         } else if (CurrentToken.Code == 15)
         {
             AddError("Неожиданный токен", CurrentToken);
-            MoveNext();
+            
+        }else if(CurrentToken?.Code == 9 || CurrentToken?.Code == 10 || CurrentToken?.Code == 17)
+        {
+           
         }
         else
         {
@@ -171,32 +182,13 @@ public class Parser
             // Проверка на закрывающую скобку '}'
             if (CurrentToken == null || CurrentToken.Code != 13)
             {
-                // Добавляем ошибку о пропущенной '}'
-                AddError("Ожидалась '}'", CurrentToken);
-
-                // Вместо пропуска добавляем искусственный токен для }
-                Token missingCloseBrace = new Token
+                string errorPosition = "end";
+                if (CurrentToken != null && CurrentToken.Code == 11) // Если это ')'
                 {
-                    Code = 13,
-                    Lexeme = "}",
-                    Position = CurrentToken != null ? CurrentToken.Position : "end"
-                };
-
-                // Добавляем токен и продолжаем парсинг
-                if (_currentIndex >= _tokens.Count)
-                {
-                    _tokens.Add(missingCloseBrace);
+                    AddError("Ожидалась '}'", CurrentToken);
+                    errorPosition = CurrentToken.Position;
                 }
-                else
-                {
-                    _tokens.Insert(_currentIndex, missingCloseBrace);
-                }
-
-                // Эта проверка теперь сработает с искусственным токеном
-                if (CurrentToken == null || CurrentToken.Code != 13)
-                {
-                    MoveNext(); // Пропускаем искусственный токен
-                }
+                AddError("Ожидалась '}'", new Token { Position = errorPosition });
             }
             else
             {
@@ -214,28 +206,13 @@ public class Parser
                 // Аналогично добавляем искусственную '}'
                 if (CurrentToken == null || CurrentToken.Code != 13)
                 {
-                    AddError("Ожидалась '}'", CurrentToken);
-
-                    Token missingCloseBrace = new Token
+                    string errorPosition = "end";
+                    if (CurrentToken != null && CurrentToken.Code == 11) // Если это ')'
                     {
-                        Code = 13,
-                        Lexeme = "}",
-                        Position = CurrentToken != null ? CurrentToken.Position : "end"
-                    };
-
-                    if (_currentIndex >= _tokens.Count)
-                    {
-                        _tokens.Add(missingCloseBrace);
+                        AddError("Ожидалась '}'", CurrentToken);
+                        errorPosition = CurrentToken.Position;
                     }
-                    else
-                    {
-                        _tokens.Insert(_currentIndex, missingCloseBrace);
-                    }
-
-                    if (CurrentToken == null || CurrentToken.Code != 13)
-                    {
-                        MoveNext();
-                    }
+                    AddError("Ожидалась '}'", new Token { Position = errorPosition });
                 }
                 else
                 {
@@ -398,81 +375,96 @@ public class Parser
 
     private void ParseReturnStatement()
     {
+        // 1. Проверяем ключевое слово 'function'
         if (CurrentToken == null) return;
 
-        if (CurrentToken.Code == 6) // Правильное ключевое слово return
+        if (CurrentToken.Code == 6) // Правильное ключевое слово
         {
             MoveNext();
         }
         else
         {
-            // Проверяем, похоже ли на return (начинается с 'r' или 'ret')
-            bool looksLikeReturn = CurrentToken.Lexeme?.StartsWith("r", StringComparison.Ordinal) ?? false;
-            if(CurrentToken.Code == 15)
+            // Проверяем, похоже ли на function (начинается с 'func')
+            bool looksLikeReturn = CurrentToken.Lexeme?.StartsWith("", StringComparison.Ordinal) ?? false;
+            if (CurrentToken.Code == 15)
             {
                 AddError("Неожиданный токен", CurrentToken);
             }
+            else if (CurrentToken.Lexeme.StartsWith("return", StringComparison.Ordinal) && CurrentToken.Code == 10)
+            {
+                AddError("Ожидался пробел после return", CurrentToken);
+            }
             else if (looksLikeReturn)
             {
-                AddError("Ожидался 'return'", CurrentToken);
+                AddError("Ожидалось ключевое слово 'return'", CurrentToken);
             }
             else
             {
-                AddError("Ожидался оператор return", CurrentToken);
+
             }
 
             // Продолжаем анализ, даже если ключевое слово неверное
             MoveNext();
         }
 
-        ParseExpression();
+        // Парсим выражение
+        if (CurrentToken != null &&
+            (CurrentToken.Code == 10 || CurrentToken.Code == 21 ||
+             CurrentToken.Code == 9 || CurrentToken.Code == 16 ||
+             CurrentToken.Code == 18))
+        {
+            ParseExpression();
+        }
+        
     }
 
     private void ParseExpression()
     {
-        while (CurrentToken != null && CurrentToken.Code != 13 && CurrentToken.Code != 14) // '}' или ';'
+        while (CurrentToken != null && CurrentToken.Code != 13 && CurrentToken.Code != 14)
         {
-            // Проверка на неожиданный токен (code == 15)
-            if (CurrentToken.Code == 15)
-            {
-                AddError("Неожиданный токен в выражении", CurrentToken);
-                MoveNext();
-                continue;
-            }
-
             switch (CurrentToken.Code)
             {
                 case 9: // '('
                     MoveNext();
                     ParseExpression();
-                    if (!Check1(11, "')'")) return;
+                    if (CurrentToken == null || CurrentToken.Code != 11)
+                    {
+                        AddError("Ожидалась ')'", CurrentToken ?? new Token { Position = "end" });
+                        return;
+                    }
                     MoveNext();
                     break;
 
                 case 10: // IDENT
                 case 21: // NUMBER
-                         // Сохраняем предыдущий токен
                     var prevToken = _currentIndex > 0 ? _tokens[_currentIndex - 1] : null;
                     MoveNext();
 
-                    // Пропускаем проверку если следующий токен неожиданный (code == 15)
-                    if (CurrentToken != null && CurrentToken.Code != 15 &&
-                        (CurrentToken.Code == 10 || CurrentToken.Code == 21 || CurrentToken.Code == 9))
+                    // Проверяем только если предыдущий токен был идентификатором/числом
+                    if (prevToken != null && (prevToken.Code == 10 || prevToken.Code == 21) &&
+                        CurrentToken != null && (CurrentToken.Code == 10 || CurrentToken.Code == 21 || CurrentToken.Code == 9))
                     {
-                        // Между двумя идентификаторами/числами/скобкой должен быть оператор
                         AddError("Ожидался оператор между выражениями", CurrentToken);
                     }
                     break;
+
+                case 11: // ')'
+                         // Проверяем, есть ли соответствующая открывающая скобка
+                    if (!HasMatchingOpeningBracket())
+                    {
+                        AddError("Лишняя ')'", CurrentToken);
+                        MoveNext();
+                        return;
+                    }
+                    return;
 
                 case 16: // '+'
                 case 18: // '-'
                 case 19: // '*'
                 case 20: // '/'
-                         // Сохраним текущий оператор для проверки следующего токена
                     int currentOp = CurrentToken.Code;
                     MoveNext();
 
-                    // Проверка на оператор после оператора
                     if (CurrentToken != null &&
                         (CurrentToken.Code == 16 || CurrentToken.Code == 18 ||
                          CurrentToken.Code == 19 || CurrentToken.Code == 20))
@@ -481,16 +473,12 @@ public class Parser
                         continue;
                     }
 
-                    // Базовая проверка выражения после оператора
                     if (CurrentToken != null && CurrentToken.Code != 15 &&
                         CurrentToken.Code != 10 && CurrentToken.Code != 21 && CurrentToken.Code != 9)
                     {
                         AddError("Ожидалось выражение после оператора", CurrentToken);
                     }
                     break;
-
-                case 11: // ')'
-                    return;
 
                 default:
                     AddError("Ожидалась часть выражения", CurrentToken);
@@ -500,33 +488,41 @@ public class Parser
         }
     }
 
+    private bool HasMatchingOpeningBracket()
+    {
+        // Ищем соответствующую открывающую скобку
+        int bracketCount = 1;
+        for (int i = _currentIndex - 1; i >= 0; i--)
+        {
+            if (_tokens[i].Code == 11) // ')'
+                bracketCount++;
+            else if (_tokens[i].Code == 9) // '('
+                bracketCount--;
+
+            if (bracketCount == 0)
+                return true;
+        }
+        return false;
+    }
+
 
 
     private void End()
     {
-        int lengthHistory = Errors.Count;
-        bool result = Check1(14, "';'");
-
-        if (!result && lengthHistory == Errors.Count)
+        if (CurrentToken == null || CurrentToken.Code != 14)
         {
             // Создаем искусственный токен для ошибки
             Token endToken = new Token
             {
-                Code = 14,
+                Code = 0, // Специальный код для отсутствующего токена
                 Lexeme = "конец функции",
                 Position = CurrentToken != null ? CurrentToken.Position : "end"
             };
             AddError("Ожидался ';' после объявления функции", endToken);
         }
-        else if (result)
+        else
         {
-            MoveNext(); // Пропускаем точку с запятой
-        }
-
-        // Добавляем проверку на отсутствие закрывающей скобки '}'
-        if (!Errors.Any(e => e.Message.Contains("}'")))
-        {
-            AddError("Ожидалась '}'", null);
+            MoveNext();
         }
     }
 }

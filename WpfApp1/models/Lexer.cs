@@ -7,7 +7,7 @@ public class Lexer
 {
     private readonly Dictionary<string, int> _keywords = new Dictionary<string, int>
     {
-        { "function", 1 }, { "return", 6 }
+    { "function", 1 }, { "return", 6 }
     };
 
     // Допустимые символы для идентификаторов (только буквы, цифры и _)

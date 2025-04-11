@@ -191,6 +191,14 @@ namespace WpfApp1
             Parser parser = new Parser(tokens);
             parser.Parse();
 
+            // Сортируем ошибки: сначала по числовой позиции, затем "end" в конце
+            var sortedErrors = parser.Errors.OrderBy(error =>
+            {
+                if (error.Position == "end")
+                    return int.MaxValue;
+                return GetPositionValue(error.Position);
+            }).ThenBy(error => error.Position).ToList();
+
             // Вывод ошибок парсера
             var parserTable = new Table();
             parserTable.Columns.Add(new TableColumn { Width = new GridLength(2, GridUnitType.Star) });
@@ -198,13 +206,22 @@ namespace WpfApp1
 
             var parserHeaderRowGroup = new TableRowGroup();
             var parserHeaderRow = new TableRow { Background = Brushes.LightGray };
-            parserHeaderRow.Cells.Add(new TableCell(new Paragraph(new Run("Описание ошибки")) { FontWeight = FontWeights.Bold }));
+
+            // Добавляем строку с количеством ошибок
+            var errorCountParagraph = new Paragraph();
+            errorCountParagraph.Inlines.Add(new Run($"Ошибки синтаксического анализа (всего: {sortedErrors.Count})")
+            {
+                FontWeight = FontWeights.Bold,
+                Foreground = sortedErrors.Count > 0 ? Brushes.Red : Brushes.Green
+            });
+
+            parserHeaderRow.Cells.Add(new TableCell(errorCountParagraph));
             parserHeaderRow.Cells.Add(new TableCell(new Paragraph(new Run("Позиция")) { FontWeight = FontWeights.Bold }));
             parserHeaderRowGroup.Rows.Add(parserHeaderRow);
             parserTable.RowGroups.Add(parserHeaderRowGroup);
 
             var parserDataRowGroup = new TableRowGroup();
-            if (parser.Errors.Count == 0)
+            if (sortedErrors.Count == 0)
             {
                 var row = new TableRow();
                 row.Cells.Add(new TableCell(new Paragraph(new Run("✓ Синтаксический анализ завершен успешно"))
@@ -217,7 +234,7 @@ namespace WpfApp1
             }
             else
             {
-                foreach (var error in parser.Errors)
+                foreach (var error in sortedErrors)
                 {
                     var row = new TableRow();
                     row.Cells.Add(new TableCell(new Paragraph(new Run(error.Message)) { Foreground = Brushes.Red }));
@@ -229,5 +246,24 @@ namespace WpfApp1
             ParserOutputRichTextBox.Document.Blocks.Add(parserTable);
         }
 
+        private int GetPositionValue(string position)
+        {
+            if (string.IsNullOrEmpty(position) || position == "end")
+                return int.MaxValue;
+
+            // Обрабатываем позиции вида "10" или "12-16"
+            if (position.Contains("-"))
+            {
+                var parts = position.Split('-');
+                if (parts.Length > 0 && int.TryParse(parts[0], out int start))
+                    return start;
+            }
+            else if (int.TryParse(position, out int singlePos))
+            {
+                return singlePos;
+            }
+
+            return int.MaxValue - 1; // Нечисловые позиции перед "end"
+        }
     }
 }
