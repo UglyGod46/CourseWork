@@ -12,5 +12,6 @@ namespace WpfApp1.models
         public string Type { get; set; }
         public string Lexeme { get; set; }
         public string Position { get; set; }
+        public string ErrorMessage { get; set; }
     }
 }

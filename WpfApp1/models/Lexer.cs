@@ -46,10 +46,11 @@ public class Lexer
             }
 
             // Обработка идентификаторов и ключевых слов
-            if (char.IsLetter(current) || current == '_')
+            if (char.IsLetter(current) || current == '_' || char.IsDigit(current))
             {
                 int start = pos;
                 bool isValidId = true;
+                bool startsWithDigit = char.IsDigit(current); // Проверка на начало с цифры
 
                 // Собираем весь идентификатор
                 while (pos < input.Length &&
@@ -62,8 +63,22 @@ public class Lexer
 
                 string value = input.Substring(start, pos - start);
 
+                // Если начинается с цифры, но содержит буквы - это невалидный идентификатор
+                if (startsWithDigit && value.Any(char.IsLetter))
+                {
+                    tokens.Add(new Token
+                    {
+                        Code = 15,
+                        Type = "Ошибка",
+                        Lexeme = value,
+                        Position = $"{start + 1}-{pos}",
+                        ErrorMessage = "Идентификатор не может начинаться с цифры"
+                    });
+                    continue;
+                }
+
                 // Проверяем на ключевые слова только если нет ошибок
-                if (isValidId)
+                if (isValidId && !startsWithDigit)
                 {
                     if (_keywords.TryGetValue(value, out int code))
                     {
@@ -88,7 +103,7 @@ public class Lexer
                         });
                     }
                 }
-                else
+                else if (!startsWithDigit) // Если не начинается с цифры, но есть другие ошибки
                 {
                     tokens.Add(new Token
                     {

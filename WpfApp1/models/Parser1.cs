@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
 using WpfApp1.models;
 
@@ -45,13 +46,6 @@ public class Parser
         Errors.Add(new ParseError($"Ожидалось {expected}, получено '{actual.Lexeme}'", actual.Position));
     }
 
-    private bool Check(int expectedCode, string expectedName)
-    {
-        if (CurrentToken?.Code == expectedCode) return true;
-        AddError(expectedName, CurrentToken);
-        return false;
-    }
-
     private bool Check1(int expectedCode, string expectedName)
     {
         if (CurrentToken?.Code == expectedCode) return true;
@@ -63,12 +57,12 @@ public class Parser
     {
         // Сначала обрабатываем лексические ошибки
         var errorTokens = _tokens.Where(t => t.Code == 15).ToList();
-        _tokens = _tokens.Where(t => t.Code != 15).ToList();
+       
         _currentIndex = 0;
 
         foreach (var token in errorTokens)
         {
-            Errors.Add(new ParseError($"Невалидный токен '{token.Lexeme}'", token.Position));
+            Errors.Add(new ParseError($"Неожиданный символ '{token.Lexeme}'", token.Position));
         }
 
         // Выполняем синтаксический анализ независимо от наличия лексических ошибок
@@ -77,7 +71,7 @@ public class Parser
         // Проверяем только корректные токены после функции
         if (CurrentToken != null && CurrentToken.Code != 14)
         {
-            AddError("Неожиданный токен после функции", CurrentToken);
+            AddError("Неожиданный символ после функции", CurrentToken);
         }
 
         End();
@@ -96,45 +90,50 @@ public class Parser
         {
             // Проверяем, похоже ли на function (начинается с 'func')
             bool looksLikeFunction = CurrentToken.Lexeme?.StartsWith("", StringComparison.Ordinal) ?? false;
-            if (CurrentToken.Code == 15)
-            {
-                AddError("Неожиданный токен", CurrentToken);
-            }
-            else if (CurrentToken.Lexeme.StartsWith("function", StringComparison.Ordinal) && CurrentToken.Code == 10)
+            if (CurrentToken.Lexeme.StartsWith("function", StringComparison.Ordinal) && CurrentToken.Code == 10)
             {
                 AddError("Ожидался пробел после function", CurrentToken);
+                MoveNext();
             }
-            else if (looksLikeFunction)
+            else if (looksLikeFunction && CurrentToken.Code != 15)
             {
                 AddError("Ожидалось ключевое слово 'function'", CurrentToken);
+                MoveNext();
             }
             else
             {
-                
+
             }
 
             // Продолжаем анализ, даже если ключевое слово неверное
-            MoveNext(); 
+            while (CurrentToken.Code == 15)
+            {
+                MoveNext();
+            }
         }
 
-        
-        
+        while (CurrentToken.Code == 15)
+        {
+            MoveNext();
+        }
+
+
         // 2. Проверяем имя функции
 
         if (CurrentToken.Code == 10)
         {
             MoveNext();
-        } else if (CurrentToken.Code == 15)
-        {
-            AddError("Неожиданный токен", CurrentToken);
-            
-        }else if(CurrentToken?.Code == 9 || CurrentToken?.Code == 10 || CurrentToken?.Code == 17)
+        } else if(CurrentToken?.Code == 9 || CurrentToken?.Code == 10 || CurrentToken?.Code == 17)
         {
            
         }
         else
         {
             AddError("Ожидалось имя функции", CurrentToken);
+        }
+        while (CurrentToken.Code == 15)
+        {
+            MoveNext();
         }
 
         // 3. Проверяем параметры
@@ -171,6 +170,10 @@ public class Parser
             {
                 MoveNext();
             }
+        }
+        while (CurrentToken.Code == 15)
+        {
+            MoveNext();
         }
 
         // 4. Проверяем тело функции
@@ -264,7 +267,7 @@ public class Parser
         {
             if (CurrentToken.Code == 15) // Проверка на неожиданный токен
             {
-                AddError("Неожиданный токен в параметрах", CurrentToken);
+                
                 MoveNext();
                 continue;
             }
@@ -273,6 +276,12 @@ public class Parser
             {
                 if (CurrentToken.Code == 10) // IDENT
                 {
+                    // Проверка что параметр не начинается с цифры
+                    if (CurrentToken.Lexeme.Length > 0 && char.IsDigit(CurrentToken.Lexeme[0]))
+                    {
+                        AddError("Идентификатор параметра не может начинаться с цифры", CurrentToken);
+                    }
+
                     _parameters.Add(CurrentToken.Lexeme);
                     MoveNext();
                     expectParam = false;
@@ -375,7 +384,6 @@ public class Parser
 
     private void ParseReturnStatement()
     {
-        // 1. Проверяем ключевое слово 'function'
         if (CurrentToken == null) return;
 
         if (CurrentToken.Code == 6) // Правильное ключевое слово
@@ -386,15 +394,11 @@ public class Parser
         {
             // Проверяем, похоже ли на function (начинается с 'func')
             bool looksLikeReturn = CurrentToken.Lexeme?.StartsWith("", StringComparison.Ordinal) ?? false;
-            if (CurrentToken.Code == 15)
-            {
-                AddError("Неожиданный токен", CurrentToken);
-            }
-            else if (CurrentToken.Lexeme.StartsWith("return", StringComparison.Ordinal) && CurrentToken.Code == 10)
+            if (CurrentToken.Lexeme.StartsWith("return", StringComparison.Ordinal) && CurrentToken.Code == 10)
             {
                 AddError("Ожидался пробел после return", CurrentToken);
             }
-            else if (looksLikeReturn)
+            else if (looksLikeReturn && CurrentToken.Code != 15)
             {
                 AddError("Ожидалось ключевое слово 'return'", CurrentToken);
             }
@@ -403,31 +407,36 @@ public class Parser
 
             }
 
-            // Продолжаем анализ, даже если ключевое слово неверное
             MoveNext();
         }
 
-        // Парсим выражение
-        if (CurrentToken != null &&
-            (CurrentToken.Code == 10 || CurrentToken.Code == 21 ||
-             CurrentToken.Code == 9 || CurrentToken.Code == 16 ||
-             CurrentToken.Code == 18))
-        {
-            ParseExpression();
-        }
+        ParseExpression();
         
     }
 
     private void ParseExpression()
     {
-        while (CurrentToken != null && CurrentToken.Code != 13 && CurrentToken.Code != 14)
+        if (CurrentToken != null && (CurrentToken.Code == 16 || CurrentToken.Code == 18 || CurrentToken.Code == 19 || CurrentToken.Code == 20))
         {
+            AddError("Выражение не может начинаться с оператора", CurrentToken);
+            MoveNext();
+        }
+        while (CurrentToken != null && CurrentToken.Code != 13 && CurrentToken.Code != 14) // '}' или ';'
+        {
+            // Проверка на неожиданный токен (code == 15)
+            if (CurrentToken.Code == 15)
+            {
+                
+                MoveNext();
+                continue;
+            }
+
             switch (CurrentToken.Code)
             {
                 case 9: // '('
                     MoveNext();
                     ParseExpression();
-                    if (CurrentToken == null || CurrentToken.Code != 11)
+                    if (CurrentToken == null || CurrentToken.Code != 11) // ')'
                     {
                         AddError("Ожидалась ')'", CurrentToken ?? new Token { Position = "end" });
                         return;
@@ -440,9 +449,8 @@ public class Parser
                     var prevToken = _currentIndex > 0 ? _tokens[_currentIndex - 1] : null;
                     MoveNext();
 
-                    // Проверяем только если предыдущий токен был идентификатором/числом
-                    if (prevToken != null && (prevToken.Code == 10 || prevToken.Code == 21) &&
-                        CurrentToken != null && (CurrentToken.Code == 10 || CurrentToken.Code == 21 || CurrentToken.Code == 9))
+                    if (CurrentToken != null && CurrentToken.Code != 15 &&
+                        (CurrentToken.Code == 10 || CurrentToken.Code == 21 || CurrentToken.Code == 9))
                     {
                         AddError("Ожидался оператор между выражениями", CurrentToken);
                     }
@@ -505,7 +513,18 @@ public class Parser
         return false;
     }
 
+    private bool IsInvalidIdentifier(string lexeme)
+    {
+        // Проверяем, что первый символ - цифра, а после идут буквы/подчеркивание
+        if (lexeme.Length == 0) return false;
 
+        // Если первый символ цифра, а в строке есть буквы/подчеркивание
+        if (char.IsDigit(lexeme[0]))
+        {
+            return lexeme.Skip(1).Any(c => char.IsLetter(c) || c == '_');
+        }
+        return false;
+    }
 
     private void End()
     {
