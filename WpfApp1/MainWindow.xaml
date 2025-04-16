@@ -27,15 +27,16 @@
                 <MenuItem Header="Выделить все" Click="SelectAll_Click" Foreground="Black"/>
             </MenuItem>
             <MenuItem Header="Текст">
-                <MenuItem Header="Постановка задачи" Foreground="Black"/>
-                <MenuItem Header="Грамматика" Foreground="Black"/>
-                <MenuItem Header="Классификация грамматики" Foreground="Black"/>
-                <MenuItem Header="Метод анализа" Foreground="Black"/>
-                <MenuItem Header="Диагностика и нейтрализация ошибок" Foreground="Black"/>
-                <MenuItem Header="Тестовый пример" Foreground="Black"/>
-                <MenuItem Header="Список литературы" Foreground="Black"/>
-                <MenuItem Header="Исходный код программы" Foreground="Black"/>
+                <MenuItem Header="Постановка задачи" Click="TextTaskStatement_Click" Foreground="Black"/>
+                <MenuItem Header="Грамматика" Click="TextGrammar_Click" Foreground="Black"/>
+                <MenuItem Header="Классификация грамматики" Click="TextGrammarClassification_Click" Foreground="Black"/>
+                <MenuItem Header="Метод анализа" Click="TextAnalysisMethod_Click" Foreground="Black"/>
+                <MenuItem Header="Диагностика и нейтрализация ошибок" Click="TextErrorDiagnostics_Click" Foreground="Black"/>
+                <MenuItem Header="Тестовый пример" Click="TextTestExample_Click" Foreground="Black"/>
+                <MenuItem Header="Список литературы" Click="TextBibliography_Click" Foreground="Black"/>
+                <MenuItem Header="Исходный код программы" Click="TextSourceCode_Click" Foreground="Black"/>
             </MenuItem>
+
             <MenuItem Header="Пуск">
                 <MenuItem Header="Запуск синтаксического анализатора" Click="AnalyzeButton_Click" Foreground="Black"/>
             </MenuItem>

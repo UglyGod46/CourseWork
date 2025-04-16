@@ -10,6 +10,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Media;
+using WpfApp1.Managers;
 using WpfApp1.models;
 
 namespace WpfApp1
@@ -20,6 +21,7 @@ namespace WpfApp1
         private readonly FileManager fileManager;
         private readonly EditManager editManager;
         private readonly HelpManager helpManager;
+        private readonly TextManager textManager = new TextManager();
 
         private double _fontSize = 14;
 
@@ -130,6 +132,46 @@ namespace WpfApp1
         private void Exit_Click(object sender, RoutedEventArgs e)
         {
             Application.Current.Shutdown();
+        }
+
+        private void TextTaskStatement_Click(object sender, RoutedEventArgs e)
+        {
+            textManager.OpenTaskStatement();
+        }
+
+        private void TextGrammar_Click(object sender, RoutedEventArgs e)
+        {
+            textManager.OpenGrammar();
+        }
+
+        private void TextGrammarClassification_Click(object sender, RoutedEventArgs e)
+        {
+            textManager.OpenGrammarClassification();
+        }
+
+        private void TextAnalysisMethod_Click(object sender, RoutedEventArgs e)
+        {
+            textManager.OpenAnalysisMethod();
+        }
+
+        private void TextErrorDiagnostics_Click(object sender, RoutedEventArgs e)
+        {
+            textManager.OpenErrorDiagnostics();
+        }
+
+        private void TextTestExample_Click(object sender, RoutedEventArgs e)
+        {
+            textManager.OpenTestExample();
+        }
+
+        private void TextBibliography_Click(object sender, RoutedEventArgs e)
+        {
+            textManager.OpenBibliography();
+        }
+
+        private void TextSourceCode_Click(object sender, RoutedEventArgs e)
+        {
+            textManager.OpenSourceCode();
         }
 
         private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
