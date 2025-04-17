@@ -13,12 +13,12 @@ namespace WpfApp1.Managers
         // Полные пути к каждому файлу
         private readonly string TaskStatementPath = Path.Combine(BasePath, "TaskStatement.pdf");
         private readonly string GrammarPath = Path.Combine(BasePath, "Grammar.pdf");
-        private readonly string GrammarClassificationPath = Path.Combine(BasePath, "GrammarClassification.pdf");
-        private readonly string AnalysisMethodPath = Path.Combine(BasePath, "AnalysisMethod.pdf");
-        private readonly string ErrorDiagnosticsPath = Path.Combine(BasePath, "ErrorDiagnostics.pdf");
-        private readonly string TestExamplePath = Path.Combine(BasePath, "TestExample.pdf");
-        private readonly string BibliographyPath = Path.Combine(BasePath, "Bibliography.pdf");
-        private readonly string SourceCodePath = Path.Combine(BasePath, "SourceCode.pdf");
+        private readonly string GrammarClassificationPath = Path.Combine(BasePath, "Grammar_Classification.pdf");
+        private readonly string AnalysisMethodPath = Path.Combine(BasePath, "The_method_of_analysis.pdf");
+        private readonly string ErrorDiagnosticsPath = Path.Combine(BasePath, "Diagnosis_and_neutralization_of_errors.pdf");
+        private readonly string TestExamplePath = Path.Combine(BasePath, "A_test_case.pdf");
+        private readonly string BibliographyPath = Path.Combine(BasePath, "List_of_literature.pdf");
+        private readonly string SourceCodePath = Path.Combine(BasePath, "Listing.pdf");
 
         // Методы для открытия каждого файла
         public void OpenTaskStatement() => OpenPdfFile(TaskStatementPath);

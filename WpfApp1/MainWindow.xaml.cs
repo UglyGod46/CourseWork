@@ -121,7 +121,7 @@ namespace WpfApp1
 
         private void Help_Click(object sender, RoutedEventArgs e)
         {
-            helpManager.ShowHelp();
+            helpManager.OpenUsersGuide();
         }
 
         private void About_Click(object sender, RoutedEventArgs e)
