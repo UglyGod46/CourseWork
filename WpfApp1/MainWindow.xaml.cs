@@ -193,100 +193,61 @@ namespace WpfApp1
 
         private void AnalyzeButton_Click(object sender, RoutedEventArgs e)
         {
-            // Очищаем RichTextBox
-            LexerOutputRichTextBox.Document.Blocks.Clear();
-            ParserOutputRichTextBox.Document.Blocks.Clear();
-
+            RegexOutputRichTextBox.Document.Blocks.Clear();
             string input = InputTextEditor.Text;
 
-            // Лексический анализ
-            Lexer lexer = new Lexer();
-            List<Token> tokens = lexer.Analyze(input);
+            // Используем автомат для поиска номеров
+            var plateResults = LicensePlateMatcher.FindMatches(input);
 
-            // Вывод токенов в виде таблицы
-            var lexerTable = new Table();
-            lexerTable.Columns.Add(new TableColumn { Width = new GridLength(1, GridUnitType.Star) });
-            lexerTable.Columns.Add(new TableColumn { Width = new GridLength(1, GridUnitType.Star) });
-            lexerTable.Columns.Add(new TableColumn { Width = new GridLength(1, GridUnitType.Star) });
+            // Можно также оставить другие регулярные выражения
+            var regexResults = RegexMatcher.FindMatches(input);
 
-            var lexerHeaderRowGroup = new TableRowGroup();
-            var lexerHeaderRow = new TableRow { Background = Brushes.LightGray };
-            lexerHeaderRow.Cells.Add(new TableCell(new Paragraph(new Run("Тип")) { FontWeight = FontWeights.Bold }));
-            lexerHeaderRow.Cells.Add(new TableCell(new Paragraph(new Run("Лексема")) { FontWeight = FontWeights.Bold }));
-            lexerHeaderRow.Cells.Add(new TableCell(new Paragraph(new Run("Позиция")) { FontWeight = FontWeights.Bold }));
-            lexerHeaderRowGroup.Rows.Add(lexerHeaderRow);
-            lexerTable.RowGroups.Add(lexerHeaderRowGroup);
+            // Объединяем результаты
+            var allResults = new List<RegexMatchResult>();
+            allResults.AddRange(plateResults);
+            allResults.AddRange(regexResults);
 
-            var lexerDataRowGroup = new TableRowGroup();
-            foreach (var token in tokens)
+            // Создаём таблицу
+            var regexTable = new Table();
+            regexTable.Columns.Add(new TableColumn { Width = new GridLength(2, GridUnitType.Star) });
+            regexTable.Columns.Add(new TableColumn { Width = new GridLength(1, GridUnitType.Star) });
+            regexTable.Columns.Add(new TableColumn { Width = new GridLength(1, GridUnitType.Star) });
+
+            // Заголовок
+            var regexHeader = new TableRowGroup();
+            var headerRow = new TableRow { Background = Brushes.LightGray };
+            headerRow.Cells.Add(new TableCell(new Paragraph(new Run("Шаблон")) { FontWeight = FontWeights.Bold }));
+            headerRow.Cells.Add(new TableCell(new Paragraph(new Run("Совпадение")) { FontWeight = FontWeights.Bold }));
+            headerRow.Cells.Add(new TableCell(new Paragraph(new Run("Позиция")) { FontWeight = FontWeights.Bold }));
+            regexHeader.Rows.Add(headerRow);
+            regexTable.RowGroups.Add(regexHeader);
+
+            // Данные
+            var regexRows = new TableRowGroup();
+            foreach (var result in regexResults)
             {
                 var row = new TableRow();
-                row.Cells.Add(new TableCell(new Paragraph(new Run(token.Type))));
-                row.Cells.Add(new TableCell(new Paragraph(new Run(token.Lexeme))));
-                row.Cells.Add(new TableCell(new Paragraph(new Run(token.Position))));
-                lexerDataRowGroup.Rows.Add(row);
+                row.Cells.Add(new TableCell(new Paragraph(new Run(result.Pattern))));
+                row.Cells.Add(new TableCell(new Paragraph(new Run(result.Match))));
+                row.Cells.Add(new TableCell(new Paragraph(new Run(result.StartIndex.ToString()))));
+                regexRows.Rows.Add(row);
             }
-            lexerTable.RowGroups.Add(lexerDataRowGroup);
-            LexerOutputRichTextBox.Document.Blocks.Add(lexerTable);
 
-            // Синтаксический анализ
-            Parser parser = new Parser(tokens);
-            parser.Parse();
-
-            // Сортируем ошибки: сначала по числовой позиции, затем "end" в конце
-            var sortedErrors = parser.Errors.OrderBy(error =>
+            if (regexResults.Count == 0)
             {
-                if (error.Position == "end")
-                    return int.MaxValue;
-                return GetPositionValue(error.Position);
-            }).ThenBy(error => error.Position).ToList();
-
-            // Вывод ошибок парсера
-            var parserTable = new Table();
-            parserTable.Columns.Add(new TableColumn { Width = new GridLength(2, GridUnitType.Star) });
-            parserTable.Columns.Add(new TableColumn { Width = new GridLength(1, GridUnitType.Star) });
-
-            var parserHeaderRowGroup = new TableRowGroup();
-            var parserHeaderRow = new TableRow { Background = Brushes.LightGray };
-
-            // Добавляем строку с количеством ошибок
-            var errorCountParagraph = new Paragraph();
-            errorCountParagraph.Inlines.Add(new Run($"Ошибки синтаксического анализа (всего: {sortedErrors.Count})")
-            {
-                FontWeight = FontWeights.Bold,
-                Foreground = sortedErrors.Count > 0 ? Brushes.Red : Brushes.Green
-            });
-
-            parserHeaderRow.Cells.Add(new TableCell(errorCountParagraph));
-            parserHeaderRow.Cells.Add(new TableCell(new Paragraph(new Run("Позиция")) { FontWeight = FontWeights.Bold }));
-            parserHeaderRowGroup.Rows.Add(parserHeaderRow);
-            parserTable.RowGroups.Add(parserHeaderRowGroup);
-
-            var parserDataRowGroup = new TableRowGroup();
-            if (sortedErrors.Count == 0)
-            {
-                var row = new TableRow();
-                row.Cells.Add(new TableCell(new Paragraph(new Run("✓ Синтаксический анализ завершен успешно"))
-                {
-                    Foreground = Brushes.Green,
-                    FontWeight = FontWeights.Bold
-                }));
-                row.Cells.Add(new TableCell(new Paragraph(new Run(""))));
-                parserDataRowGroup.Rows.Add(row);
+                var noMatchRow = new TableRow();
+                noMatchRow.Cells.Add(new TableCell(new Paragraph(new Run("Совпадений не найдено")) { Foreground = Brushes.Gray }));
+                noMatchRow.Cells.Add(new TableCell(new Paragraph(new Run(""))));
+                noMatchRow.Cells.Add(new TableCell(new Paragraph(new Run(""))));
+                regexRows.Rows.Add(noMatchRow);
             }
-            else
-            {
-                foreach (var error in sortedErrors)
-                {
-                    var row = new TableRow();
-                    row.Cells.Add(new TableCell(new Paragraph(new Run(error.Message)) { Foreground = Brushes.Red }));
-                    row.Cells.Add(new TableCell(new Paragraph(new Run(error.Position))));
-                    parserDataRowGroup.Rows.Add(row);
-                }
-            }
-            parserTable.RowGroups.Add(parserDataRowGroup);
-            ParserOutputRichTextBox.Document.Blocks.Add(parserTable);
+
+            regexTable.RowGroups.Add(regexRows);
+            RegexOutputRichTextBox.Document.Blocks.Add(regexTable);
         }
+
+
+
 
         private int GetPositionValue(string position)
         {

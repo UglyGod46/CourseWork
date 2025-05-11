@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
+using System.Security.AccessControl;
 using WpfApp1.models;
 
 public class Parser
@@ -69,7 +70,7 @@ public class Parser
         ParseFunction();
 
         // Проверяем только корректные токены после функции
-        if (CurrentToken != null && CurrentToken.Code != 14)
+        if (CurrentToken != null && CurrentToken.Code != 14 && CurrentToken.Code != 15)
         {
             AddError("Неожиданный символ после функции", CurrentToken);
         }
@@ -528,7 +529,7 @@ public class Parser
 
     private void End()
     {
-        if (CurrentToken == null || CurrentToken.Code != 14)
+        if (CurrentToken == null || CurrentToken.Code != 14 )
         {
             // Создаем искусственный токен для ошибки
             Token endToken = new Token

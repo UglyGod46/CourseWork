@@ -129,6 +129,9 @@
                 <TabItem Header="Парсер">
                     <RichTextBox x:Name="ParserOutputRichTextBox" IsReadOnly="True" VerticalScrollBarVisibility="Auto" />
                 </TabItem>
+                <TabItem Header="Регулярные выражения">
+                    <RichTextBox x:Name="RegexOutputRichTextBox" IsReadOnly="True" VerticalScrollBarVisibility="Auto" />
+                </TabItem>
             </TabControl>
         </Grid>
     </DockPanel>
