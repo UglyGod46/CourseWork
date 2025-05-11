@@ -186,5 +186,14 @@ function calc(a, b, c) {
 ![image](https://github.com/user-attachments/assets/e87b2c31-6928-41e0-9384-cf6bfa08f18c)
 
 
+# 6-ая ЛР
+
+Тестовый пример для каждого выражения:
+![image](https://github.com/user-attachments/assets/fe56771e-4979-437d-ac9c-59b6f6fd6d62)
+
+
+Граф автомата:
+![image](https://github.com/user-attachments/assets/a16b2bc4-7a6f-4438-bee3-5ec1ab49dace)
+
 
 
