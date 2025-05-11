@@ -193,6 +193,7 @@ function calc(a, b, c) {
 
 
 Граф автомата:
-![deepseek_mermaid_20250511_739066](https://github.com/user-attachments/assets/cb81686f-b773-4f0e-8dce-020b0ae9b1f7)
+![image](https://github.com/user-attachments/assets/a16b2bc4-7a6f-4438-bee3-5ec1ab49dace)
+
 
 
