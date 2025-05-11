@@ -79,26 +79,20 @@ namespace WpfApp1.models
 
     public static class RegexMatcher
     {
-        private static readonly string pattern12 = @"\b\d*[1-9]\b";
-        private static readonly string pattern19 = @"\b[a-zA-Z$_][a-zA-Z0-9]*\b";
-        private static readonly string pattern22 = @"\b[АВЕКМНОРСТУХа-рстух]\d{3}[АВЕКМНОРСТУХа-рстух]{2}\d{2}\b";
+        public const string pattern12 = @"\b\d*[1-9]\b";
+        public const string pattern19 = @"\b[a-zA-Z$_][a-zA-Z0-9]*\b";
+        public const string pattern22 = @"\b[АВЕКМНОРСТУХа-рстух]\d{3}[АВЕКМНОРСТУХа-рстух]{2}\d{2}\b";
 
         public static List<RegexMatchResult> FindMatches(string text)
         {
             var results = new List<RegexMatchResult>();
-
-            // Автомат для номеров
-            results.AddRange(LicensePlateMatcher.FindMatches(text));
-
-            // Регулярные выражения
             AddMatches(results, pattern12, text);
             AddMatches(results, pattern19, text);
             AddMatches(results, pattern22, text);
-
             return results;
         }
 
-        private static void AddMatches(List<RegexMatchResult> list, string pattern, string text)
+        public static void AddMatches(List<RegexMatchResult> list, string pattern, string text)
         {
             var regex = new Regex(pattern);
             foreach (Match match in regex.Matches(text))

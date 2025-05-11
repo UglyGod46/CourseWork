@@ -23,6 +23,7 @@ namespace WpfApp1
         private readonly HelpManager helpManager;
         private readonly TextManager textManager = new TextManager();
 
+
         private double _fontSize = 14;
 
         public double FontSize
@@ -191,59 +192,133 @@ namespace WpfApp1
             }
         }
 
+        private void Pattern12Button_Click(object sender, RoutedEventArgs e)
+        {
+            ShowRegexMatches(RegexMatcher.pattern12, "Числа, не заканчивающиеся на 0");
+        }
+
+        private void Pattern19Button_Click(object sender, RoutedEventArgs e)
+        {
+            ShowRegexMatches(RegexMatcher.pattern19, "Идентификаторы");
+        }
+
+        private void Pattern22Button_Click(object sender, RoutedEventArgs e)
+        {
+            ShowRegexMatches(RegexMatcher.pattern22, "Автомобильные номера");
+        }
+
+        private void ShowRegexMatches(string pattern, string patternName)
+        {
+            RegexOutputRichTextBox.Document.Blocks.Clear();
+            string input = InputTextEditor.Text;
+
+            var results = new List<RegexMatchResult>();
+            RegexMatcher.AddMatches(results, pattern, input);
+
+            // Создаем FlowDocument для таблицы
+            FlowDocument flowDoc = new FlowDocument();
+            Table table = new Table();
+
+            // Добавляем столбцы
+            table.Columns.Add(new TableColumn { Width = new GridLength(2, GridUnitType.Star) });
+            table.Columns.Add(new TableColumn { Width = new GridLength(1, GridUnitType.Star) });
+            table.Columns.Add(new TableColumn { Width = new GridLength(1, GridUnitType.Star) });
+
+            // Создаем группу строк для заголовка
+            TableRowGroup headerGroup = new TableRowGroup();
+            TableRow headerRow = new TableRow { Background = Brushes.LightGray };
+
+            headerRow.Cells.Add(new TableCell(new Paragraph(new Run("Шаблон")) { FontWeight = FontWeights.Bold }));
+            headerRow.Cells.Add(new TableCell(new Paragraph(new Run("Совпадение")) { FontWeight = FontWeights.Bold }));
+            headerRow.Cells.Add(new TableCell(new Paragraph(new Run("Позиция")) { FontWeight = FontWeights.Bold }));
+
+            headerGroup.Rows.Add(headerRow);
+            table.RowGroups.Add(headerGroup);
+
+            // Добавляем данные
+            TableRowGroup dataGroup = new TableRowGroup();
+            foreach (var result in results)
+            {
+                TableRow row = new TableRow();
+                row.Cells.Add(new TableCell(new Paragraph(new Run(patternName))));
+                row.Cells.Add(new TableCell(new Paragraph(new Run(result.Match))));
+                row.Cells.Add(new TableCell(new Paragraph(new Run(result.StartIndex.ToString()))));
+                dataGroup.Rows.Add(row);
+            }
+
+            if (results.Count == 0)
+            {
+                TableRow noMatchRow = new TableRow();
+                noMatchRow.Cells.Add(new TableCell(new Paragraph(new Run("Совпадений не найдено")) { Foreground = Brushes.Gray }));
+                noMatchRow.Cells.Add(new TableCell(new Paragraph(new Run(""))));
+                noMatchRow.Cells.Add(new TableCell(new Paragraph(new Run(""))));
+                dataGroup.Rows.Add(noMatchRow);
+            }
+
+            table.RowGroups.Add(dataGroup);
+            flowDoc.Blocks.Add(table);
+            RegexOutputRichTextBox.Document = flowDoc;
+        }
+
         private void AnalyzeButton_Click(object sender, RoutedEventArgs e)
         {
             RegexOutputRichTextBox.Document.Blocks.Clear();
             string input = InputTextEditor.Text;
 
-            // Используем автомат для поиска номеров
-            var plateResults = LicensePlateMatcher.FindMatches(input);
+            // Используем все шаблоны
+            var allResults = RegexMatcher.FindMatches(input);
 
-            // Можно также оставить другие регулярные выражения
-            var regexResults = RegexMatcher.FindMatches(input);
+            // Создаем FlowDocument для таблицы
+            FlowDocument flowDoc = new FlowDocument();
+            Table table = new Table();
 
-            // Объединяем результаты
-            var allResults = new List<RegexMatchResult>();
-            allResults.AddRange(plateResults);
-            allResults.AddRange(regexResults);
+            // Добавляем столбцы
+            table.Columns.Add(new TableColumn { Width = new GridLength(2, GridUnitType.Star) });
+            table.Columns.Add(new TableColumn { Width = new GridLength(1, GridUnitType.Star) });
+            table.Columns.Add(new TableColumn { Width = new GridLength(1, GridUnitType.Star) });
 
-            // Создаём таблицу
-            var regexTable = new Table();
-            regexTable.Columns.Add(new TableColumn { Width = new GridLength(2, GridUnitType.Star) });
-            regexTable.Columns.Add(new TableColumn { Width = new GridLength(1, GridUnitType.Star) });
-            regexTable.Columns.Add(new TableColumn { Width = new GridLength(1, GridUnitType.Star) });
+            // Создаем группу строк для заголовка
+            TableRowGroup headerGroup = new TableRowGroup();
+            TableRow headerRow = new TableRow { Background = Brushes.LightGray };
 
-            // Заголовок
-            var regexHeader = new TableRowGroup();
-            var headerRow = new TableRow { Background = Brushes.LightGray };
             headerRow.Cells.Add(new TableCell(new Paragraph(new Run("Шаблон")) { FontWeight = FontWeights.Bold }));
             headerRow.Cells.Add(new TableCell(new Paragraph(new Run("Совпадение")) { FontWeight = FontWeights.Bold }));
             headerRow.Cells.Add(new TableCell(new Paragraph(new Run("Позиция")) { FontWeight = FontWeights.Bold }));
-            regexHeader.Rows.Add(headerRow);
-            regexTable.RowGroups.Add(regexHeader);
 
-            // Данные
-            var regexRows = new TableRowGroup();
-            foreach (var result in regexResults)
+            headerGroup.Rows.Add(headerRow);
+            table.RowGroups.Add(headerGroup);
+
+            // Добавляем данные
+            TableRowGroup dataGroup = new TableRowGroup();
+            foreach (var result in allResults)
             {
-                var row = new TableRow();
-                row.Cells.Add(new TableCell(new Paragraph(new Run(result.Pattern))));
+                TableRow row = new TableRow();
+                row.Cells.Add(new TableCell(new Paragraph(new Run(GetPatternName(result.Pattern)))));
                 row.Cells.Add(new TableCell(new Paragraph(new Run(result.Match))));
                 row.Cells.Add(new TableCell(new Paragraph(new Run(result.StartIndex.ToString()))));
-                regexRows.Rows.Add(row);
+                dataGroup.Rows.Add(row);
             }
 
-            if (regexResults.Count == 0)
+            if (allResults.Count == 0)
             {
-                var noMatchRow = new TableRow();
+                TableRow noMatchRow = new TableRow();
                 noMatchRow.Cells.Add(new TableCell(new Paragraph(new Run("Совпадений не найдено")) { Foreground = Brushes.Gray }));
                 noMatchRow.Cells.Add(new TableCell(new Paragraph(new Run(""))));
                 noMatchRow.Cells.Add(new TableCell(new Paragraph(new Run(""))));
-                regexRows.Rows.Add(noMatchRow);
+                dataGroup.Rows.Add(noMatchRow);
             }
 
-            regexTable.RowGroups.Add(regexRows);
-            RegexOutputRichTextBox.Document.Blocks.Add(regexTable);
+            table.RowGroups.Add(dataGroup);
+            flowDoc.Blocks.Add(table);
+            RegexOutputRichTextBox.Document = flowDoc;
+        }
+
+        private string GetPatternName(string pattern)
+        {
+            if (pattern == RegexMatcher.pattern12) return "Числа без нуля";
+            if (pattern == RegexMatcher.pattern19) return "Идентификаторы";
+            if (pattern == RegexMatcher.pattern22) return "Номера авто";
+            return "Неизвестный шаблон";
         }
 
 

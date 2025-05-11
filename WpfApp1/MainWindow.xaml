@@ -86,6 +86,18 @@
                     <Image Source="images/about.png" Width="16" Height="16" />
                 </Button>
                 <Separator />
+                <Button ToolTip="Числа без нуля" Click="Pattern12Button_Click">
+                    <TextBlock Text="Числа" FontWeight="Bold"/>
+                </Button>
+                <Button ToolTip="Идентификаторы" Click="Pattern19Button_Click">
+                    <TextBlock Text="Идентификаторы" FontWeight="Bold"/>
+                </Button>
+                <Button ToolTip="Номера авто" Click="Pattern22Button_Click">
+                    <TextBlock Text="Авто" FontWeight="Bold"/>
+                </Button>
+                <Button ToolTip="Все шаблоны" Click="AnalyzeButton_Click">
+                    <TextBlock Text="Все" FontWeight="Bold"/>
+                </Button>
 
                 <ComboBox x:Name="FontSizeComboBox" Width="80" VerticalAlignment="Center" 
                 SelectedValue="{Binding FontSize, Mode=TwoWay}" 
