@@ -189,7 +189,17 @@ function calc(a, b, c) {
 # 6-ая ЛР
 
 Тестовый пример для каждого выражения:
-![image](https://github.com/user-attachments/assets/fe56771e-4979-437d-ac9c-59b6f6fd6d62)
+Числа не заканчивающиеся на 0:
+![image](https://github.com/user-attachments/assets/c63fd104-e9f4-42d7-8e04-ff870c373fe4)
+
+Идентификаторы:
+
+![image](https://github.com/user-attachments/assets/5b7bd916-1705-4107-b46e-07d6d7f001d5)
+
+Номера для авто:
+
+![image](https://github.com/user-attachments/assets/61d9946d-9aab-4007-96cc-044299ecb14d)
+
 
 
 Граф автомата:
