@@ -206,4 +206,41 @@ function calc(a, b, c) {
 ![image](https://github.com/user-attachments/assets/a16b2bc4-7a6f-4438-bee3-5ec1ab49dace)
 
 
+# 8-ая ЛР
 
+## Грамматика:
+```
+G[S]:
+1. S -> <Noun phrase> <Verb phrase>
+2. <Noun phrase> -> <Noun>| <Adjective phrase> <Noun> | λ
+3. <Verb phrase> -> <Verb><Noun phrase>
+4. <Adjective phrase> -> <Adjective phrase ><Adjective> | λ
+<Noun> -> flight | passenger | trip | morning | ...
+<Verb> -> is | prefers | like | need | depend | fly | ...
+<Adjective> -> non-stop | first | direct | ...
+```
+
+## Язык:
+L(G)={ (abj* noun verb)+ , abj ∈ <Abjective>, noun ∈ <Noun>, verb ∈ <Verb>}
+
+## Классификация грамматики
+Тип: Контекстно-свободная (КС, тип 2 по Хомскому).
+Признаки:
+- Левые части правил — одиночные нетерминалы.
+- Рекурсия в <AdjectivePhrase>.
+
+Ограничения:
+- Не является автоматной (требует стека для разбора).
+- Допускает неоднозначность (например, множественные прилагательные).
+
+## Схема вызова функции:
+
+![image](https://github.com/user-attachments/assets/f047ef1d-f545-463b-9ff3-c0e894bd8575)
+
+## Тестовые примеры:
+
+![image](https://github.com/user-attachments/assets/535c8995-b201-4943-8f30-b3ea7ed33abf)
+
+![image](https://github.com/user-attachments/assets/a5feb141-cc59-4f63-a088-e15206d78750)
+
+![image](https://github.com/user-attachments/assets/ac28f65f-d5e7-4123-87a4-8dbfb1ff327a)
