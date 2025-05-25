@@ -262,55 +262,95 @@ namespace WpfApp1
 
         private void AnalyzeButton_Click(object sender, RoutedEventArgs e)
         {
-            RegexOutputRichTextBox.Document.Blocks.Clear();
-            string input = InputTextEditor.Text;
-
-            // Используем все шаблоны
-            var allResults = RegexMatcher.FindMatches(input);
-
-            // Создаем FlowDocument для таблицы
-            FlowDocument flowDoc = new FlowDocument();
-            Table table = new Table();
-
-            // Добавляем столбцы
-            table.Columns.Add(new TableColumn { Width = new GridLength(2, GridUnitType.Star) });
-            table.Columns.Add(new TableColumn { Width = new GridLength(1, GridUnitType.Star) });
-            table.Columns.Add(new TableColumn { Width = new GridLength(1, GridUnitType.Star) });
-
-            // Создаем группу строк для заголовка
-            TableRowGroup headerGroup = new TableRowGroup();
-            TableRow headerRow = new TableRow { Background = Brushes.LightGray };
-
-            headerRow.Cells.Add(new TableCell(new Paragraph(new Run("Шаблон")) { FontWeight = FontWeights.Bold }));
-            headerRow.Cells.Add(new TableCell(new Paragraph(new Run("Совпадение")) { FontWeight = FontWeights.Bold }));
-            headerRow.Cells.Add(new TableCell(new Paragraph(new Run("Позиция")) { FontWeight = FontWeights.Bold }));
-
-            headerGroup.Rows.Add(headerRow);
-            table.RowGroups.Add(headerGroup);
-
-            // Добавляем данные
-            TableRowGroup dataGroup = new TableRowGroup();
-            foreach (var result in allResults)
+            try
             {
-                TableRow row = new TableRow();
-                row.Cells.Add(new TableCell(new Paragraph(new Run(GetPatternName(result.Pattern)))));
-                row.Cells.Add(new TableCell(new Paragraph(new Run(result.Match))));
-                row.Cells.Add(new TableCell(new Paragraph(new Run(result.StartIndex.ToString()))));
-                dataGroup.Rows.Add(row);
-            }
+                ParserOutputRichTextBox.Document.Blocks.Clear();
 
-            if (allResults.Count == 0)
+                string input = InputTextEditor.Text;
+                if (string.IsNullOrWhiteSpace(input))
+                {
+                    MessageBox.Show("Введите текст для анализа", "Предупреждение", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
+                var tokens = input.Split(new[] { ' ', '\t', '\n', '\r' },
+                                      StringSplitOptions.RemoveEmptyEntries)
+                                 .ToList();
+
+                var parser = new RecursiveDescentParser();
+                var (isValid, callStack, errors) = parser.Parse(tokens);
+
+                FlowDocument flowDoc = new FlowDocument();
+
+                // Заголовок
+                Paragraph header = new Paragraph(new Run("Результат синтаксического анализа"))
+                {
+                    FontSize = 16,
+                    FontWeight = FontWeights.Bold,
+                    TextAlignment = TextAlignment.Center,
+                    Margin = new Thickness(0, 0, 0, 10)
+                };
+                flowDoc.Blocks.Add(header);
+
+                // Статус анализа
+                flowDoc.Blocks.Add(new Paragraph(new Run($"Статус: {(isValid ? "✅ Корректное предложение" : "❌ Обнаружены синтаксические ошибки")}"))
+                {
+                    FontWeight = FontWeights.Bold,
+                    Foreground = isValid ? Brushes.DarkGreen : Brushes.Red,
+                    Margin = new Thickness(0, 0, 0, 10)
+                });
+
+                // Вывод ошибок
+                if (errors.Count > 0)
+                {
+                    Paragraph errorsHeader = new Paragraph(new Run("Обнаруженные ошибки:"))
+                    {
+                        FontWeight = FontWeights.Bold,
+                        Foreground = Brushes.DarkRed,
+                        Margin = new Thickness(0, 0, 0, 5)
+                    };
+                    flowDoc.Blocks.Add(errorsHeader);
+
+                    foreach (var error in errors)
+                    {
+                        flowDoc.Blocks.Add(new Paragraph(new Run($"• {error}"))
+                        {
+                            Foreground = Brushes.Red,
+                            Margin = new Thickness(20, 2, 0, 2)
+                        });
+                    }
+                }
+
+                // Разделитель
+                flowDoc.Blocks.Add(new Paragraph(new Run("Процесс разбора:"))
+                {
+                    FontWeight = FontWeights.Bold,
+                    Margin = new Thickness(0, 10, 0, 5)
+                });
+
+                // Вывод последовательности вызовов
+                foreach (var call in callStack)
+                {
+                    Brush foreground = Brushes.Black;
+                    if (call.Contains("λ-правило")) foreground = Brushes.Gray;
+                    if (call.Contains("[Ошибка]")) foreground = Brushes.Red;
+                    if (call.Contains("Соответствие")) foreground = Brushes.DarkGreen;
+
+                    flowDoc.Blocks.Add(new Paragraph(new Run(call))
+                    {
+                        FontFamily = new FontFamily("Consolas"),
+                        Margin = new Thickness(0),
+                        Foreground = foreground
+                    });
+                }
+
+                ParserOutputRichTextBox.Document = flowDoc;
+            }
+            catch (Exception ex)
             {
-                TableRow noMatchRow = new TableRow();
-                noMatchRow.Cells.Add(new TableCell(new Paragraph(new Run("Совпадений не найдено")) { Foreground = Brushes.Gray }));
-                noMatchRow.Cells.Add(new TableCell(new Paragraph(new Run(""))));
-                noMatchRow.Cells.Add(new TableCell(new Paragraph(new Run(""))));
-                dataGroup.Rows.Add(noMatchRow);
+                MessageBox.Show($"Ошибка при анализе: {ex.Message}", "Ошибка",
+                              MessageBoxButton.OK, MessageBoxImage.Error);
             }
-
-            table.RowGroups.Add(dataGroup);
-            flowDoc.Blocks.Add(table);
-            RegexOutputRichTextBox.Document = flowDoc;
         }
 
         private string GetPatternName(string pattern)
@@ -344,4 +384,222 @@ namespace WpfApp1
             return int.MaxValue - 1; // Нечисловые позиции перед "end"
         }
     }
+
+    public class RecursiveDescentParser
+    {
+        private List<string> tokens;
+        private int currentTokenIndex;
+        private List<string> callStack;
+        private List<string> errors;
+        private int indentLevel;
+
+        private readonly HashSet<string> nouns = new HashSet<string> { "flight", "passenger", "trip", "morning" };
+        private readonly HashSet<string> verbs = new HashSet<string> { "is", "prefers", "like", "need", "depend", "fly" };
+        private readonly HashSet<string> adjectives = new HashSet<string> { "non-stop", "first", "direct" };
+
+        public (bool isValid, List<string> callStack, List<string> errors) Parse(List<string> inputTokens)
+        {
+            tokens = inputTokens;
+            currentTokenIndex = 0;
+            callStack = new List<string>();
+            errors = new List<string>();
+            indentLevel = 0;
+
+            try
+            {
+                LogCall("Начало разбора");
+                S();
+
+                if (currentTokenIndex < tokens.Count)
+                {
+                    AddError($"Ожидался конец предложения, но найдены лишние токены: {string.Join(" ", tokens.Skip(currentTokenIndex))}");
+                }
+
+                LogReturn();
+            }
+            catch (Exception ex)
+            {
+                AddError($"Критическая ошибка: {ex.Message}");
+            }
+
+            return (errors.Count == 0, callStack, errors);
+        }
+
+        private void S()
+        {
+            LogCall("S -> <Noun phrase> <Verb phrase>");
+            var npResult = NounPhrase();
+            var vpResult = VerbPhrase();
+
+            if (!npResult || !vpResult)
+            {
+                AddError("Неполная структура предложения");
+            }
+            LogReturn();
+        }
+
+        private bool NounPhrase()
+        {
+            LogCall("NounPhrase -> <Noun> | <Adjective phrase> <Noun> | λ");
+
+            if (currentTokenIndex >= tokens.Count)
+            {
+                LogCall("Применено λ-правило: NounPhrase -> λ (нет токенов)");
+                LogReturn();
+                return true;
+            }
+
+            // Сохраняем позицию для возможного отката
+            int startPos = currentTokenIndex;
+            bool hasAdjectives = false;
+
+            // Пробуем вариант с прилагательными
+            if (IsAdjective(tokens[currentTokenIndex]))
+            {
+                hasAdjectives = true;
+                AdjectivePhrase();
+            }
+
+            // После прилагательных должно быть существительное
+            if (hasAdjectives)
+            {
+                if (currentTokenIndex < tokens.Count && IsNoun(tokens[currentTokenIndex]))
+                {
+                    MatchNoun();
+                    LogReturn();
+                    return true;
+                }
+                else
+                {
+                    AddError($"Ожидалось существительное после прилагательных");
+                    currentTokenIndex = startPos; // Откат к началу
+                    LogReturn();
+                    return false;
+                }
+            }
+
+            // Вариант с существительным
+            if (IsNoun(tokens[currentTokenIndex]))
+            {
+                MatchNoun();
+                LogReturn();
+                return true;
+            }
+
+            // λ-правило
+            LogCall("Применено λ-правило: NounPhrase -> λ (нет подходящих токенов)");
+            LogReturn();
+            return true;
+        }
+
+        private bool VerbPhrase()
+        {
+            LogCall("VerbPhrase -> <Verb> <Noun phrase>");
+
+            if (currentTokenIndex >= tokens.Count)
+            {
+                AddError("Ожидался глагол, но достигнут конец предложения");
+                LogReturn();
+                return false;
+            }
+
+            if (IsVerb(tokens[currentTokenIndex]))
+            {
+                MatchVerb();
+                bool npResult = NounPhrase();
+                LogReturn();
+                return npResult;
+            }
+            else
+            {
+                AddError($"Ожидался глагол, но найдено '{tokens[currentTokenIndex]}'");
+                LogReturn();
+                return false;
+            }
+        }
+
+        private void AdjectivePhrase()
+        {
+            LogCall("AdjectivePhrase -> <Adjective phrase> <Adjective> | λ");
+
+            // Рекурсивно собираем все прилагательные
+            while (currentTokenIndex < tokens.Count && IsAdjective(tokens[currentTokenIndex]))
+            {
+                MatchAdjective();
+            }
+
+            LogCall("AdjectivePhrase завершено (λ или все прилагательные обработаны)");
+            LogReturn();
+        }
+
+        private void MatchNoun()
+        {
+            if (currentTokenIndex < tokens.Count && IsNoun(tokens[currentTokenIndex]))
+            {
+                LogCall($"Соответствие: Noun -> '{tokens[currentTokenIndex]}'");
+                currentTokenIndex++;
+            }
+            else
+            {
+                AddError($"Ожидалось существительное, но найдено: {(currentTokenIndex < tokens.Count ? tokens[currentTokenIndex] : "конец предложения")}");
+            }
+        }
+
+        private void MatchVerb()
+        {
+            if (currentTokenIndex < tokens.Count && IsVerb(tokens[currentTokenIndex]))
+            {
+                LogCall($"Соответствие: Verb -> '{tokens[currentTokenIndex]}'");
+                currentTokenIndex++;
+            }
+            else
+            {
+                AddError($"Ожидался глагол, но найдено: {(currentTokenIndex < tokens.Count ? tokens[currentTokenIndex] : "конец предложения")}");
+            }
+        }
+
+        private void MatchAdjective()
+        {
+            if (currentTokenIndex < tokens.Count && IsAdjective(tokens[currentTokenIndex]))
+            {
+                LogCall($"Соответствие: Adjective -> '{tokens[currentTokenIndex]}'");
+                currentTokenIndex++;
+            }
+            else
+            {
+                AddError($"Ожидалось прилагательное, но найдено: {(currentTokenIndex < tokens.Count ? tokens[currentTokenIndex] : "конец предложения")}");
+            }
+        }
+
+        private bool IsNoun(string token) => nouns.Contains(token.ToLower());
+        private bool IsVerb(string token) => verbs.Contains(token.ToLower());
+        private bool IsAdjective(string token) => adjectives.Contains(token.ToLower());
+
+        private void LogCall(string message)
+        {
+            callStack.Add($"{new string(' ', indentLevel * 2)}Вход: {message}");
+            indentLevel++;
+        }
+
+        private void LogReturn()
+        {
+            indentLevel--;
+            if (indentLevel >= 0 && callStack.Count > 0)
+            {
+                var lastCall = callStack.LastOrDefault(c => c.StartsWith(new string(' ', indentLevel * 2) + "Вход: "));
+                if (lastCall != null)
+                {
+                    callStack.Add($"{new string(' ', indentLevel * 2)}Выход: {lastCall.Substring(lastCall.IndexOf(':') + 2)}");
+                }
+            }
+        }
+
+        private void AddError(string errorMessage)
+        {
+            string error = $"{new string(' ', indentLevel * 2)}[Ошибка] {errorMessage}";
+            errors.Add(error);
+            callStack.Add(error);
+        }
+    }
 }
+
